@@ -38,11 +38,21 @@ $ npm install
 $ npm run start
 
 # watch mode
-$ npm run start:dev
+$ npm run dev
 
 # production mode
 $ npm run start:prod
 ```
+
+## Migration
+```bash
+# run migration
+$ npx prisma migrate dev --name init
+
+# reset
+$ npx prisma migrate reset
+```
+Change "init" to the name of the changes
 
 ## Run tests
 
@@ -56,6 +66,10 @@ $ npm run test:e2e
 # test coverage
 $ npm run test:cov
 ```
+
+## Swagger
+Add `@ApiTags('Your_controller_name')` in every controller 
+Add `@ApiProperty({})` to every field of DTO to show the format
 
 ## Deployment
 
