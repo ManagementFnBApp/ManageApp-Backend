@@ -11,6 +11,10 @@ export class AuthService {
     ) {}
     async login( { username, password } : LoginDto): Promise<LoginResponseDto> {
         const user = await this.userService.getUserByUsername(username);
+        if(!user) {
+            throw new Error("Username or password is incorrect");
+        }
+
         return new LoginResponseDto("dummy-access-token");
     }
 

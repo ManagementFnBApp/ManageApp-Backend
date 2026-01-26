@@ -26,10 +26,11 @@ export class UserService {
         });
 
         if(existed) {
-            throw new BadRequestException("Email or username was exited");
+            throw new BadRequestException("Email or username was existed");
         }
 
-        const hashPassword = await bcrypt.hash(password,10);
+        const salt = await bcrypt.genSalt();
+        const hashPassword = await bcrypt.hash(password, salt);
 
         return this.prisma.user.create({
             data: {
