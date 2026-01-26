@@ -11,4 +11,10 @@ export class UserService {
     async getAllUsers(): Promise<UserResponseDto[]> {
         return this.prisma.user.findMany();
     }
+
+    async getUserByUsername(username: string): Promise<UserResponseDto | null> {
+        return this.prisma.user.findUnique({
+            where: { username },
+        });
+    }
 }

@@ -9,9 +9,15 @@ export class UserController {
     constructor(
         protected readonly userService: UserService,
     ) {}
+
     @Get()
     async getAllUsers(): Promise<UserResponseDto[]> {
         return this.userService.getAllUsers();
+    }
+
+    @Get()
+    async getUserByUsername(@Body('username') username: string): Promise<UserResponseDto | null> {
+        return this.userService.getUserByUsername(username);
     }
 
     // @Post()
