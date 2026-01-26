@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { LoginDto, LoginResponseDto } from "src/dtos/login.dto";
+import { LoginDto, LoginResponseDto } from "src/modules/auth/dtos/login.dto";
 import { UserService } from "../users/user.service";
 import { JwtService } from "@nestjs/jwt";
-
+import { RegisterDto } from "./dtos/register.dto";
 @Injectable()
 export class AuthService {
     constructor(
@@ -11,6 +11,18 @@ export class AuthService {
     ) {}
     async login( { username, password } : LoginDto): Promise<LoginResponseDto> {
         const user = await this.userService.getUserByUsername(username);
+        if(!user) {
+            throw new Error("Username or password is incorrect");
+        }
+
         return new LoginResponseDto("dummy-access-token");
+    }
+
+    async register(dto:RegisterDto) {
+        return await this.userService.creatUser(
+            dto.email,
+            dto.username,
+            dto.password
+        )
     }
 }

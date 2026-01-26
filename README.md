@@ -45,6 +45,7 @@ $ npm run start:prod
 ```
 
 ## Migration
+
 ```bash
 # run migration
 $ npx prisma migrate dev --name init
