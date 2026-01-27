@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { UserResponseDto } from "../users/dtos/user.dto";
+import { plainToInstance } from "class-transformer";
 import * as bcrypt from 'bcrypt'
 @Injectable()
 export class UserService {
@@ -9,7 +10,8 @@ export class UserService {
     ) { }
 
     async getAllUsers(): Promise<UserResponseDto[]> {
-        return this.prisma.user.findMany();
+        const users = await this.prisma.user.findMany();
+        return plainToInstance(UserResponseDto, users, { excludeExtraneousValues: false });
     }
 
     async getUserByUsername(username: string): Promise<UserResponseDto | null> {
