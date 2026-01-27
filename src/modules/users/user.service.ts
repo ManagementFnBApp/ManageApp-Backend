@@ -12,13 +12,15 @@ export class UserService {
         return this.prisma.user.findMany();
     }
 
+
     async getUserByUsername(username: string): Promise<UserResponseDto | null> {
         return this.prisma.user.findUnique({
             where: { username },
         });
     }
-
-    async creatUser(email: string, username: string, password: string){
+   
+    //CREATE USER
+    async creatUser(email: string, username: string, password: string): Promise<UserResponseDto>{
         const existed = await this.prisma.user.findFirst({
             where : {
                 OR: [{email},{username}],
@@ -37,7 +39,33 @@ export class UserService {
                 email,
                 username,
                 password : hashPassword
+            },
+            select:{
+                id: true,
+                email: true,
+                username: true,
+                createdAt: true,
+                updatedAt: true,
             }
+        })
+    }
+    
+    //UPDATE PASSWORD
+    async updatePassword(userId: number, newPassword: string): Promise<void>{
+        const salt = await bcrypt.genSalt();
+        const hashPassword = await bcrypt.hash(newPassword, salt);
+        await this.prisma.user.update({
+            where :{id: userId},
+            data: {
+                password: hashPassword,
+            }
+        })
+    }
+
+    //FIND BY EMAIL
+    async getUserByEmail(email: string): Promise<UserResponseDto | null>{
+        return this.prisma.user.findUnique({
+            where : {email}
         })
     }
 }
