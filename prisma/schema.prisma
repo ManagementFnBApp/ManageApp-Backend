@@ -12,11 +12,24 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 model User {
-  id        Int      @id @default(autoincrement()) // Khóa chính, tự tăng
-  email     String?   @unique                       // Duy nhất
-  username      String @unique                              // Có thể null (optional)
+  id        Int      @id @default(autoincrement())
+  email     String   @unique                    
+  username      String @unique                           
   password  String
-  createdAt DateTime @default(now())               // Mặc định là thời gian hiện tại
-  updatedAt DateTime @updatedAt                    // Tự động cập nhật khi record thay đổi
+  role Role @default(USER)
+  createdAt DateTime @default(now())              
+  updatedAt DateTime @updatedAt                    
+}
+
+model Product {
+  id String @id @default(uuid())
+  name String 
+  createdAt DateTime @default(now())              
+  updatedAt DateTime @updatedAt  
 }

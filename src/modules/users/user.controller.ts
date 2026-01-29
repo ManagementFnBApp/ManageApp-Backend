@@ -1,22 +1,22 @@
-import { Body, Controller, Get, Post, Res } from "@nestjs/common";
+import { Body, Controller, Get } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { UserService } from "./user.service";
-import { UserResponseDto } from "src/dtos/user.dto";
+import { UserResponseDto, UserRole } from "../../dtos/user.dto";
+import { ResponseData, ResponseType } from "src/global/globalResponse";
+import { HttpMessage, HttpStatus } from "src/global/globalEnum";
+import { Public, Roles } from "src/decorators/decorators";
 
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
     constructor(
         protected readonly userService: UserService,
-    ) {}
-    @Get()
-    async getAllUsers(): Promise<UserResponseDto[]> {
-        return this.userService.getAllUsers();
-    }
+    ) { }
 
-    // @Post()
-    // async createUser(@Body() account: string): Promise<number> {
-    //     return 1;
-    // }
+    @Roles(UserRole.ADMIN)
+    @Get()
+    async getAllUsers(): Promise<ResponseType<UserResponseDto>> {
+        return new ResponseData(await this.userService.getAllUsers(), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    }
 
 }
