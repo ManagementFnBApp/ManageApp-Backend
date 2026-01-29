@@ -1,6 +1,12 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsNotEmpty } from "class-validator";
 
+export interface JwtPayload {
+  sub: number;           // user ID
+  username: string;
+  role: string;  // or permissions: string[]
+}
+
 export class LoginDto {
     @ApiProperty()
     @IsNotEmpty()
@@ -16,6 +22,17 @@ export class LoginResponseDto {
 
     constructor(accessToken: string) {
         this.accessToken = accessToken;
+    }
+}
+
+export class AuthResponseDto {
+    username: string;
+    role: string;
+
+    constructor({ username, role }) {
+        this.username = username;
+        this.role = role;
+        return this;
     }
 }
 

@@ -1,5 +1,5 @@
 import { SetMetadata } from "@nestjs/common";
-import { UserRole } from "src/modules/users/dtos/user.dto";
+import { UserRole } from "src/dtos/user.dto";
 
 //Decorator for Authentication
 export const IS_PUBLIC_KEY = 'isPublic';
