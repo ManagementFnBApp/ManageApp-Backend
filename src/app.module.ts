@@ -9,6 +9,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './modules/auth/guard/auth.guard';
 import { RolesGuard } from './modules/auth/guard/role.guard';
+import { getJwtExpiresIn, getJwtSecretKey } from './global/constants';
 
 @Module({
   imports: [
@@ -21,9 +22,9 @@ import { RolesGuard } from './modules/auth/guard/role.guard';
       inject: [ConfigService],
       global: true,
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET_KEY'),
+        secret: getJwtSecretKey(configService),
         signOptions: {
-          expiresIn: configService.get<number>('JWT_EXPIRES_IN'),
+          expiresIn: getJwtExpiresIn(configService),
         }
       })
     }),

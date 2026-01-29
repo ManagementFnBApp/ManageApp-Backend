@@ -5,13 +5,17 @@ import { JwtService } from "@nestjs/jwt";
 import { RegisterDto } from "../../dtos/register.dto";
 import { UserResponseDto } from "../../dtos/user.dto";
 import * as bcrypt from 'bcrypt'
+import { getJwtExpiresIn } from "src/global/constants";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class AuthService {
     constructor(
         private userService: UserService,
         private jwtService: JwtService,
+        private configService: ConfigService,
     ) { }
+    
     async login({ username, password }: LoginDto): Promise<AuthPermission> {
         const user = await this.userService.getUserByUsername(username);
         if (!user) {
@@ -25,7 +29,7 @@ export class AuthService {
         return new AuthPermission({
             id: user.id,
             token: await this.jwtService.signAsync(payload),
-            expiredTime: 900000,
+            expiredTime: getJwtExpiresIn(this.configService),
         });
     }
 
