@@ -47,7 +47,6 @@ model Admin {
   created_at   DateTime @default(now())
   
   tenants      Tenant[]
-  subscription_payments SubscriptionPayment[]
   
   @@map("admins")
 }
@@ -67,9 +66,9 @@ model User {
   user_id    Int       @id @default(autoincrement())
   tenant_id  Int
   shop_id    Int?
+  owner_manager_id   Int?      // ID of the owner who manages this user (for shop owners/managers)
   role_id    Int
-  username   String
-  email      String    @unique
+  email      String
   password   String
   avatar     String?
   full_name  String
@@ -82,8 +81,21 @@ model User {
   tenant     Tenant    @relation(fields: [tenant_id], references: [tenant_id])
   shop       Shop?     @relation(fields: [shop_id], references: [shop_id])
   role       Role      @relation(fields: [role_id], references: [role_id])
-  shop_owner ShopOwner?
   
+  // Self-reference for owner hierarchy
+  owner         User?    @relation("UserOwner", fields: [owner_manager_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  managed_users User[]   @relation("UserOwner")
+  
+  // Orders processed by this user
+  orders        Orders[] @relation("OrderUser")
+  
+  // Shifts where this user works
+  shift_users   ShiftCashier[] @relation("ShiftUsers")
+  
+  // Inventory transactions created by this user
+  inventory_traits InventoryTrait[] @relation("InventoryTraitCreator")
+  
+  @@unique([tenant_id, email])
   @@map("users")
 }
 
@@ -103,29 +115,11 @@ model Shop {
   
   tenant          Tenant           @relation(fields: [tenant_id], references: [tenant_id])
   users           User[]
-  shop_owners     ShopOwner[]
   inventories     Inventory[]
   shifts          Shift[]
   merchandises    Merchandise[]
   
   @@map("shops")
-}
-
-model ShopOwner {
-  owner_id         Int      @id @default(autoincrement())
-  owner_manager_id Int?
-  shop_id          Int
-  user_id          Int      @unique
-  phone            String?
-  full_name        String
-  avatar           String?
-  is_active        Boolean  @default(true)
-  created_at       DateTime @default(now())
-  
-  shop             Shop     @relation(fields: [shop_id], references: [shop_id])
-  user             User     @relation(fields: [user_id], references: [user_id])
-  
-  @@map("shop_owners")
 }
 
 model Shift {
@@ -144,11 +138,12 @@ model Shift {
 
 model ShiftCashier {
   shift_id   Int
-  cashier_id Int
+  user_id    Int  // User working as cashier in this shift
   
-  shift      Shift  @relation(fields: [shift_id], references: [shift_id])
+  shift      Shift @relation(fields: [shift_id], references: [shift_id])
+  user       User  @relation("ShiftUsers", fields: [user_id], references: [user_id])
   
-  @@id([shift_id, cashier_id])
+  @@id([shift_id, user_id])
   @@map("shift_cashiers")
 }
 
@@ -221,7 +216,6 @@ model Inventory {
   
   shop              Shop     @relation(fields: [shop_id], references: [shop_id])
   inventory_items   InventoryItem[]
-  inventory_traits  InventoryTrait[]
   
   @@map("inventories")
 }
@@ -234,24 +228,26 @@ model InventoryItem {
   reserved_quantity Int?     @default(0)
   updated_at        DateTime @updatedAt
   
-  product           Product   @relation(fields: [product_id], references: [product_id])
-  inventory         Inventory @relation(fields: [inventory_id], references: [inventory_id])
+  product           Product          @relation(fields: [product_id], references: [product_id])
+  inventory         Inventory        @relation(fields: [inventory_id], references: [inventory_id])
+  inventory_traits  InventoryTrait[]
   
   @@map("inventory_items")
 }
 
 model InventoryTrait {
-  inv_trait_id     Int      @id @default(autoincrement())
+  inv_trait_id      Int      @id @default(autoincrement())
   inventory_item_id Int
-  created_by       Int
-  inv_trait_type   String
-  direction_sign   String
-  quantity         Int
-  quantity_before  Int
-  quantity_after   Int
-  created_at       DateTime @default(now())
+  created_by        Int      // User who created this trait/transaction
+  inv_trait_type    String
+  direction_sign    String
+  quantity          Int
+  quantity_before   Int
+  quantity_after    Int
+  created_at        DateTime @default(now())
   
-  inventory        Inventory @relation(fields: [inventory_item_id], references: [inventory_id])
+  inventory_item    InventoryItem @relation(fields: [inventory_item_id], references: [inventory_item_id])
+  user              User          @relation("InventoryTraitCreator", fields: [created_by], references: [user_id])
   
   @@map("inventory_traits")
 }
@@ -300,7 +296,7 @@ model MerchandiseRedemption {
 model Orders {
   order_id        Int      @id @default(autoincrement())
   shift_id        Int
-  cashier_id      Int
+  user_id         Int      // User who processed this order (cashier)
   customer_id     Int?
   subtotal_amount Decimal  @db.Decimal(10, 2)
   order_status    String
@@ -310,7 +306,8 @@ model Orders {
   completed_at    DateTime?
   cancelled_at    DateTime?
   
-  shift           Shift    @relation(fields: [shift_id], references: [shift_id])
+  shift           Shift     @relation(fields: [shift_id], references: [shift_id])
+  user            User      @relation("OrderUser", fields: [user_id], references: [user_id])
   customer        Customer? @relation(fields: [customer_id], references: [customer_id])
   order_items     OrderItem[]
   payments        Payment[]
@@ -364,16 +361,17 @@ model Subscription {
 }
 
 model SubscriptionTenant {
-  sub_tenant_id    Int      @id @default(autoincrement())
-  subscription_id  Int
-  tenant_id        Int
-  number_of_renewals Int?   @default(0)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  is_expired       Boolean  @default(false)
+  sub_tenant_id      Int      @id @default(autoincrement())
+  subscription_id    Int
+  tenant_id          Int
+  number_of_renewals Int?     @default(0)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  is_expired         Boolean  @default(false)
   
-  subscription     Subscription @relation(fields: [subscription_id], references: [subscription_id])
-  tenant           Tenant       @relation(fields: [tenant_id], references: [tenant_id])
+  subscription        Subscription        @relation(fields: [subscription_id], references: [subscription_id])
+  tenant              Tenant              @relation(fields: [tenant_id], references: [tenant_id])
+  subscription_payments SubscriptionPayment[]
   
   @@map("subscription_tenants")
 }
@@ -386,7 +384,7 @@ model SubscriptionPayment {
   created_at     DateTime @default(now())
   payment_status String
   
-  admin          Admin    @relation(fields: [sub_tenant_id], references: [admin_id])
+  subscription_tenant SubscriptionTenant @relation(fields: [sub_tenant_id], references: [sub_tenant_id])
   
   @@map("subscription_payments")
 }
