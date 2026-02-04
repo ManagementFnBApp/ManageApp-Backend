@@ -5,6 +5,8 @@ import { AppService } from './app.service';
 import { UserModule } from './modules/users/user.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { RoleModule } from './modules/roles/role.module';
+import { AdminModule } from './modules/admins/admin.module';
 import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './modules/auth/guard/auth.guard';
@@ -30,6 +32,8 @@ import { getJwtExpiresIn, getJwtSecretKey } from './global/constants';
     }),
     UserModule,
     AuthModule,
+    RoleModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [

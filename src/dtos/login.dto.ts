@@ -5,6 +5,7 @@ export interface JwtPayload {
   sub: number;           // user ID
   username: string;
   role: string;  // or permissions: string[]
+  ownerManagerId?: number | null;  // Để check SHOPOWNER gốc
 }
 
 export class LoginDto {
@@ -28,10 +29,12 @@ export class LoginResponseDto {
 export class AuthResponseDto {
     username: string;
     role: string;
+    ownerManagerId?: number | null;
 
-    constructor({ username, role }) {
+    constructor({ username, role, ownerManagerId }: { username: string; role: string; ownerManagerId?: number | null }) {
         this.username = username;
         this.role = role;
+        this.ownerManagerId = ownerManagerId;
         return this;
     }
 }

@@ -35,10 +35,21 @@ export class AuthService {
 
     //REGISTER
     async register(dto: RegisterDto): Promise<UserResponseDto> {
+        // Nếu chưa có roleCode, tự động gán dựa trên số lượng user
+        let roleCode = dto.roleCode;
+        if (!roleCode) {
+            // Kiểm tra xem có user nào trong hệ thống chưa
+            const userCount = await this.userService.getUserCount();
+            // User đầu tiên là SHOPOWNER, các user sau là CASHIER
+            roleCode = userCount === 0 ? 'SHOPOWNER' : 'CASHIER';
+        }
+        
         return this.userService.createUser(
             dto.email,
             dto.username,
-            dto.password
+            dto.password,
+            1, // tenantId mặc định
+            roleCode
         )
     }
 

@@ -1,7 +1,7 @@
 import { Body, Controller, Get } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { UserService } from "./user.service";
-import { UserResponseDto, UserRole } from "../../dtos/user.dto";
+import { UserResponseDto } from "../../dtos/user.dto";
 import { ResponseData, ResponseType } from "src/global/globalResponse";
 import { HttpMessage, HttpStatus } from "src/global/globalEnum";
 import { Public, Roles } from "src/decorators/decorators";
@@ -13,7 +13,7 @@ export class UserController {
         protected readonly userService: UserService,
     ) { }
 
-    @Roles(UserRole.ADMIN)
+    @Roles('MANAGER')
     @Get()
     async getAllUsers(): Promise<ResponseType<UserResponseDto>> {
         return new ResponseData(await this.userService.getAllUsers(), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
