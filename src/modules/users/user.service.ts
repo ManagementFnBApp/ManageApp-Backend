@@ -19,14 +19,9 @@ export class UserService {
     }
 
 
-    async getUserByUsername(username: string, tenantId: number = 1): Promise<UserResponseDto | null> {
+    async getUserByUsername(username: string): Promise<UserResponseDto | null> {
         const user = await this.prisma.user.findUnique({
-            where: { 
-                tenant_id_username: {
-                    tenant_id: tenantId,
-                    username
-                }
-            },
+            where: { username },
             include: {
                 role: true
             }
@@ -35,10 +30,9 @@ export class UserService {
     }
 
     //CREATE USER
-    async createUser(email: string, username: string, password: string, tenantId: number = 1, roleCode: string = 'CASHIER'): Promise<UserResponseDto> {
+    async createUser(email: string, username: string, password: string, tenantId?: number, roleCode?: string): Promise<UserResponseDto> {
         const existed = await this.prisma.user.findFirst({
             where: {
-                tenant_id: tenantId,
                 OR: [
                     { email },
                     { username }
@@ -50,13 +44,16 @@ export class UserService {
             throw new BadRequestException("Email or username was existed");
         }
 
-        // Tìm role_id của CASHIER
-        const role = await this.prisma.role.findUnique({
-            where: { role_code: roleCode }
-        });
-
-        if (!role) {
-            throw new BadRequestException(`Role ${roleCode} không tồn tại`);
+        // Tìm role nếu có roleCode
+        let roleId: number | null = null;
+        if (roleCode) {
+            const role = await this.prisma.role.findUnique({
+                where: { role_code: roleCode }
+            });
+            if (!role) {
+                throw new BadRequestException(`Role ${roleCode} không tồn tại`);
+            }
+            roleId = role.role_id;
         }
 
         const salt = await bcrypt.genSalt();
@@ -64,8 +61,8 @@ export class UserService {
 
         const user = await this.prisma.user.create({
             data: {
-                tenant_id: tenantId,
-                role_id: role.role_id,
+                tenant_id: tenantId || null,
+                role_id: roleId,
                 email,
                 username,
                 password: hashPassword,
@@ -91,14 +88,9 @@ export class UserService {
     }
 
     //FIND BY EMAIL
-    async getUserByEmail(email: string, tenantId: number = 1): Promise<UserResponseDto | null> {
+    async getUserByEmail(email: string): Promise<UserResponseDto | null> {
         const user = await this.prisma.user.findUnique({
-            where: { 
-                tenant_id_email: {
-                    tenant_id: tenantId,
-                    email
-                }
-            },
+            where: { email },
             include: {
                 role: true
             }
@@ -127,7 +119,7 @@ export class UserService {
             phone: user.phone,
             isActive: user.is_active,
             lastLogin: user.last_login,
-            role: user.role.role_code,
+            role: user.role?.role_code || null,
             createdAt: user.created_at,
             updatedAt: user.updated_at
         };
