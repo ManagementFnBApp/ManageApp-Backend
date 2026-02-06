@@ -1,4 +1,4 @@
-import { Body, Controller, Get } from "@nestjs/common";
+import { Body, Controller, Get, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { UserService } from "./user.service";
 import { UserResponseDto } from "../../dtos/user.dto";
@@ -13,10 +13,16 @@ export class UserController {
         protected readonly userService: UserService,
     ) { }
 
-    @Roles('MANAGER')
+    // @Roles('MANAGER')
+    @Public()
     @Get()
     async getAllUsers(): Promise<ResponseType<UserResponseDto>> {
         return new ResponseData(await this.userService.getAllUsers(), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 
+    // @Public()
+    // @Post()
+    // async createUser(@Body() body: ): Promise<ResponseType<UserResponseDto>> {
+    //     return new ResponseData(await this.userService.createUser(body), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    // }
 }

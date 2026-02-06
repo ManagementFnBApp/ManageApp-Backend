@@ -15,6 +15,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './modules/auth/guard/auth.guard';
 import { RolesGuard } from './modules/auth/guard/role.guard';
 import { getJwtExpiresIn, getJwtSecretKey } from './global/constants';
+import { ProfileModule } from './modules/profiles/profile.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { getJwtExpiresIn, getJwtSecretKey } from './global/constants';
     TenantModule,
     ProductModule,
     InventoryModule,
+    ProfileModule
   ],
   controllers: [AppController],
   providers: [

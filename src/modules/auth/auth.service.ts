@@ -27,7 +27,7 @@ export class AuthService {
         }
         const payload = { ...new AuthResponseDto(user) };
         return new AuthPermission({
-            id: user.id,
+            user_id: user.user_id,
             token: await this.jwtService.signAsync(payload),
             expiredTime: getJwtExpiresIn(this.configService),
         });
@@ -50,7 +50,7 @@ export class AuthService {
             return { message: "If user was existed, reset token was sent" }
         }
         const token = await this.jwtService.sign(
-            { sub: user.id },
+            { sub: user.user_id },
             { expiresIn: '30m' }
 
         )

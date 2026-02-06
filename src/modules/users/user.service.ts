@@ -12,7 +12,8 @@ export class UserService {
     async getAllUsers(): Promise<UserResponseDto[]> {
         const users = await this.prisma.user.findMany({
             include: {
-                role: true
+                role: true,
+                profile: true
             }
         });
         return users.map(user => this.transformToDto(user));
@@ -23,7 +24,8 @@ export class UserService {
         const user = await this.prisma.user.findUnique({
             where: { username },
             include: {
-                role: true
+                role: true,
+                profile: true
             }
         });
         return user ? this.transformToDto(user) : null;
@@ -65,11 +67,11 @@ export class UserService {
                 role_id: roleId,
                 email,
                 username,
-                password: hashPassword,
-                full_name: username
+                password: hashPassword
             },
             include: {
-                role: true
+                role: true,
+                profile: true
             }
         });
         return this.transformToDto(user);
@@ -92,7 +94,8 @@ export class UserService {
         const user = await this.prisma.user.findUnique({
             where: { email },
             include: {
-                role: true
+                role: true,
+                profile: true
             }
         });
         return user ? this.transformToDto(user) : null;
@@ -106,7 +109,7 @@ export class UserService {
     // Helper method to transform Prisma User to UserResponseDto
     private transformToDto(user: any): UserResponseDto {
         return {
-            id: user.user_id,
+            user_id: user.user_id,
             tenantId: user.tenant_id,
             shopId: user.shop_id,
             ownerManagerId: user.owner_manager_id,
@@ -114,14 +117,19 @@ export class UserService {
             email: user.email,
             username: user.username,
             password: user.password,
-            avatar: user.avatar,
-            fullName: user.full_name,
-            phone: user.phone,
             isActive: user.is_active,
             lastLogin: user.last_login,
             role: user.role?.role_code || null,
             createdAt: user.created_at,
-            updatedAt: user.updated_at
+            updatedAt: user.updated_at,
+            profile: user.profile ? {
+                profile_id: user.profile.profile_id,
+                full_name: user.profile.full_name,
+                avatar: user.profile.avatar,
+                phone: user.profile.phone,
+                created_at: user.profile.created_at,
+                updated_at: user.profile.updated_at
+            } : null
         };
     }
 }
