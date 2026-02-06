@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Request } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, Request } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { AdminService } from "./admin.service";
 import { CreateAdminDto, AdminResponseDto, UpdateAdminDto, AdminLoginDto } from "../../dtos/admin.dto";
@@ -74,7 +74,7 @@ export class AdminController {
     }
 
     // Update admin
-    @Patch(':id')
+    @Put(':id')
     @ApiOperation({ summary: 'Cập nhật admin' })
     @ApiResponse({ status: 200, description: 'Admin updated successfully' })
     @ApiResponse({ status: 404, description: 'Admin not found' })

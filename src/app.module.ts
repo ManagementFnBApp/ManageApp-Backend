@@ -8,6 +8,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { RoleModule } from './modules/roles/role.module';
 import { AdminModule } from './modules/admins/admin.module';
 import { TenantModule } from './modules/tenants/tenant.module';
+import { ProductModule } from './modules/products/product.module';
+import { InventoryModule } from './modules/inventories/inventory.module';
 import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './modules/auth/guard/auth.guard';
@@ -36,6 +38,8 @@ import { getJwtExpiresIn, getJwtSecretKey } from './global/constants';
     RoleModule,
     AdminModule,
     TenantModule,
+    ProductModule,
+    InventoryModule,
   ],
   controllers: [AppController],
   providers: [
@@ -50,4 +54,4 @@ import { getJwtExpiresIn, getJwtSecretKey } from './global/constants';
     }
   ],
 })
-export class AppModule {}
+export class AppModule { }
