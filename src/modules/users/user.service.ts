@@ -1,8 +1,8 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
-import { UserResponseDto } from "../../dtos/user.dto";
-import { plainToInstance } from "class-transformer";
+import { CreateUserDto, UserResponseDto } from "../../dtos/user.dto";
 import * as bcrypt from 'bcrypt'
+
 @Injectable()
 export class UserService {
     constructor(
@@ -32,12 +32,12 @@ export class UserService {
     }
 
     //CREATE USER
-    async createUser(email: string, username: string, password: string, tenantId?: number, roleCode?: string): Promise<UserResponseDto> {
+    async createUser(body: CreateUserDto): Promise<UserResponseDto> {
         const existed = await this.prisma.user.findFirst({
             where: {
                 OR: [
-                    { email },
-                    { username }
+                    { email: body.email },
+                    { username: body.username }
                 ],
             },
         });
@@ -48,25 +48,27 @@ export class UserService {
 
         // Tìm role nếu có roleCode
         let roleId: number | null = null;
-        if (roleCode) {
+        if (body.roleCode) {
             const role = await this.prisma.role.findUnique({
-                where: { role_code: roleCode }
+                where: { role_code: body.roleCode }
             });
             if (!role) {
-                throw new BadRequestException(`Role ${roleCode} không tồn tại`);
+                throw new BadRequestException(`Role ${body.roleCode} không tồn tại`);
             }
             roleId = role.role_id;
         }
 
         const salt = await bcrypt.genSalt();
-        const hashPassword = await bcrypt.hash(password, salt);
+        const hashPassword = await bcrypt.hash(body.password, salt);
 
         const user = await this.prisma.user.create({
             data: {
-                tenant_id: tenantId || null,
+                tenant_id: body.tenantId || null,
                 role_id: roleId,
-                email,
-                username,
+                shop_id: body.shopId || null,
+                owner_manager_id: body.ownerManagerId || null,
+                email: body.email,
+                username: body.username,
                 password: hashPassword
             },
             include: {

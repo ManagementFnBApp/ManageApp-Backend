@@ -37,9 +37,7 @@ export class AuthService {
     async register(dto: RegisterDto): Promise<UserResponseDto> {
         // Register không cần tenant và role ban đầu
         return this.userService.createUser(
-            dto.email,
-            dto.username,
-            dto.password
+            dto
         )
     }
 

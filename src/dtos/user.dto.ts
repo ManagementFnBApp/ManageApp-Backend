@@ -44,9 +44,9 @@ export class CreateUserDto {
     @IsOptional()
     ownerManagerId?: number;
 
-    @IsInt()
+    @IsString()
     @IsOptional()
-    roleId?: number;
+    roleCode?: string;
 
     @IsEmail({}, { message: "Email không hợp lệ" })
     @IsNotEmpty({ message: "Email không được để trống" })
@@ -61,18 +61,6 @@ export class CreateUserDto {
     @IsNotEmpty({ message: "Password không được để trống" })
     @MinLength(6, { message: "Password phải có ít nhất 6 ký tự" })
     password: string;
-
-    @IsString()
-    @IsNotEmpty({ message: "Họ tên không được để trống" })
-    fullName: string;
-
-    @IsString()
-    @IsOptional()
-    phone?: string;
-
-    @IsString()
-    @IsOptional()
-    avatar?: string;
 }
 
 // DTO cho việc update user
