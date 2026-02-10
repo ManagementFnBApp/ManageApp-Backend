@@ -55,6 +55,9 @@ $ npx prisma migrate reset
 
 # status
 $ npx prisma migrate status
+
+#generate (sync with db)
+$ npx prisma generate
 ```
 Change "init" to the name of the changes
 
