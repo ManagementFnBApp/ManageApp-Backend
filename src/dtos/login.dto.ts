@@ -40,12 +40,12 @@ export class AuthResponseDto {
 }
 
 export class AuthPermission {
-    id: number;
+    user_id: number;
     token: string;
     expiredTime: number;
 
-    constructor({ id, token, expiredTime }) {
-        this.id = id;
+    constructor({ user_id, token, expiredTime }) {
+        this.user_id = user_id;
         this.token = token;
         this.expiredTime = expiredTime;
 

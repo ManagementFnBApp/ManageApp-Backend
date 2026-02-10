@@ -1,18 +1,35 @@
-import { IsEmail, IsNotEmpty, MinLength, IsOptional, IsString } from "class-validator";
+import { IsEmail, IsNotEmpty, MinLength, IsOptional, IsString, IsInt } from "class-validator";
 
 export class RegisterDto {
-  @IsEmail()
-  email: string;
+  @IsInt()
+  @IsOptional()
+  tenantId?: number;
 
-  @IsNotEmpty()
-  username: string;
+  @IsInt()
+  @IsOptional()
+  shopId?: number;
 
-  @MinLength(6)
-  password: string;
+  @IsInt()
+  @IsOptional()
+  ownerManagerId?: number;
 
   @IsString()
   @IsOptional()
-  roleCode?: string;  // Optional, mặc định là SHOPOWNER nếu là user đầu tiên
+  roleCode?: string;
+
+  @IsEmail({}, { message: "Email không hợp lệ" })
+  @IsNotEmpty({ message: "Email không được để trống" })
+  email: string;
+
+  @IsString()
+  @IsNotEmpty({ message: "Username không được để trống" })
+  @MinLength(3, { message: "Username phải có ít nhất 3 ký tự" })
+  username: string;
+
+  @IsString()
+  @IsNotEmpty({ message: "Password không được để trống" })
+  @MinLength(6, { message: "Password phải có ít nhất 6 ký tự" })
+  password: string;
 }
 
 export class RegisterResponseDto {

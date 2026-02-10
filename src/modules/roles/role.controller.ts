@@ -4,7 +4,7 @@ import { RoleService } from "./role.service";
 import { CreateRoleDto, RoleResponseDto, UpdateRoleDto } from "../../dtos/role.dto";
 import { ResponseData, ResponseType } from "../../global/globalResponse";
 import { HttpMessage, HttpStatus } from "../../global/globalEnum";
-import { Roles } from "../../decorators/decorators";
+import { Public, Roles } from "../../decorators/decorators";
 
 @ApiTags('Roles')
 @Controller('roles')
@@ -33,7 +33,8 @@ export class RoleController {
     }
 
     // Tạo role mới
-    @Roles('SHOPOWNER')
+    // @Roles('SHOPOWNER')
+    @Public()
     @Post()
     @ApiOperation({ summary: 'Tạo role mới' })
     @ApiResponse({ status: 201, description: 'Role created successfully' })

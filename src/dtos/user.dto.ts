@@ -1,9 +1,19 @@
 import { Exclude } from "class-transformer";
 import { IsEmail, IsString, IsNotEmpty, MinLength, IsOptional, IsBoolean, IsInt, IsPhoneNumber } from "class-validator";
 
+// Profile Response DTO
+export class ProfileResponseDto {
+    profile_id: string;
+    full_name: string;
+    avatar?: string | null;
+    phone?: string | null;
+    created_at: Date;
+    updated_at: Date;
+}
+
 // Response DTO - dùng để trả về dữ liệu user
 export class UserResponseDto {
-    id: number;
+    user_id: number;
     tenantId: number;
     shopId?: number | null;
     ownerManagerId?: number | null;
@@ -12,14 +22,12 @@ export class UserResponseDto {
     username: string;
     @Exclude()
     password: string;
-    avatar?: string | null;
-    fullName: string;
-    phone?: string | null;
     isActive: boolean;
     lastLogin?: Date | null;
     role: string; // role_code từ relation
     createdAt: Date;
     updatedAt: Date;
+    profile?: ProfileResponseDto | null;
 }
 
 // DTO cho việc tạo user mới
@@ -36,9 +44,9 @@ export class CreateUserDto {
     @IsOptional()
     ownerManagerId?: number;
 
-    @IsInt()
+    @IsString()
     @IsOptional()
-    roleId?: number;
+    roleCode?: string;
 
     @IsEmail({}, { message: "Email không hợp lệ" })
     @IsNotEmpty({ message: "Email không được để trống" })
@@ -53,18 +61,6 @@ export class CreateUserDto {
     @IsNotEmpty({ message: "Password không được để trống" })
     @MinLength(6, { message: "Password phải có ít nhất 6 ký tự" })
     password: string;
-
-    @IsString()
-    @IsNotEmpty({ message: "Họ tên không được để trống" })
-    fullName: string;
-
-    @IsString()
-    @IsOptional()
-    phone?: string;
-
-    @IsString()
-    @IsOptional()
-    avatar?: string;
 }
 
 // DTO cho việc update user
