@@ -7,6 +7,9 @@ import { UserResponseDto } from "../../dtos/user.dto";
 import * as bcrypt from 'bcrypt'
 import { getJwtExpiresIn } from "src/global/constants";
 import { ConfigService } from "@nestjs/config";
+import { TenantService } from "../tenants/tenant.service";
+import { RoleService } from "../roles/role.service";
+import { AdminService } from "../admins/admin.service";
 
 @Injectable()
 export class AuthService {
@@ -14,6 +17,9 @@ export class AuthService {
         private userService: UserService,
         private jwtService: JwtService,
         private configService: ConfigService,
+        private tenantService: TenantService,
+        private roleService: RoleService,
+        private adminService: AdminService,
     ) { }
     
     async login({ username, password }: LoginDto): Promise<AuthPermission> {
@@ -25,7 +31,13 @@ export class AuthService {
         if (!isMatch) {
             throw new UnauthorizedException("Username or password is incorrect");
         }
-        const payload = { ...new AuthResponseDto(user) };
+        // Tạo payload với sub chứa user_id
+        const payload = { 
+            sub: user.user_id,
+            username: user.username,
+            role: user.role,
+            ownerManagerId: user.ownerManagerId
+        };
         return new AuthPermission({
             user_id: user.user_id,
             token: await this.jwtService.signAsync(payload),
@@ -35,10 +47,13 @@ export class AuthService {
 
     //REGISTER
     async register(dto: RegisterDto): Promise<UserResponseDto> {
-        // Register không cần tenant và role ban đầu
-        return this.userService.createUser(
-            dto
-        )
+        // Register cơ bản - không tạo tenant
+        // Tenant sẽ được tạo sau khi user thanh toán subscription thành công
+        return this.userService.createUser({
+            ...dto,
+            tenantId: undefined,
+            roleCode: undefined,
+        });
     }
 
     //FORGOT-PASSWORD
