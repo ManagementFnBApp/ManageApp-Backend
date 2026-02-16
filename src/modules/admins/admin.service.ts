@@ -170,6 +170,23 @@ export class AdminService {
         return this.prisma.admin.count();
     }
 
+    // Lấy system admin từ database (dùng cho auto-create tenant)
+    async getOrCreateSystemAdmin(): Promise<AdminResponseDto> {
+        // Lấy admin đầu tiên trong database (admin_id nhỏ nhất và đang active)
+        const admin = await this.prisma.admin.findFirst({
+            where: { is_active: true },
+            orderBy: { admin_id: 'asc' }
+        });
+
+        if (!admin) {
+            throw new BadRequestException(
+                'Không tìm thấy admin nào trong hệ thống. Vui lòng tạo admin trước khi sử dụng tính năng này.'
+            );
+        }
+
+        return this.transformToDto(admin);
+    }
+
     // Admin login
     async adminLogin(dto: AdminLoginDto): Promise<{ adminId: number; token: string; expiredTime: number }> {
         const admin = await this.prisma.admin.findUnique({
