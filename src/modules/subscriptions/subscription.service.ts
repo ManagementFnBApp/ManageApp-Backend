@@ -72,6 +72,23 @@ export class SubscriptionService {
       throw new BadRequestException(`User ID ${userId} không tồn tại`);
     }
 
+    // VALIDATE: Kiểm tra xem user đã có subscription tenant nào chưa
+    const expectedTenantName = `${user.username}'s Shop`;
+    const existingTenant = await this.prisma.tenant.findFirst({
+      where: {
+        tenant_name: expectedTenantName,
+      },
+      include: {
+        subscription_tenants: true,
+      },
+    });
+
+    if (existingTenant && existingTenant.subscription_tenants.length > 0) {
+      throw new BadRequestException(
+        `Bạn đã có subscription tenant. Mỗi user chỉ được có 1 subscription tenant. Sub Tenant ID của bạn: ${existingTenant.subscription_tenants[0].sub_tenant_id}`
+      );
+    }
+
     // Tạo subscription tenant (chưa có tenant_id, sẽ được tạo sau khi payment success)
     // Tạm thời tạo tenant trước để có tenant_id
     const systemAdmin = await this.adminService.getOrCreateSystemAdmin();
@@ -113,6 +130,46 @@ export class SubscriptionService {
 
     if (!user) {
       throw new BadRequestException(`User ID ${userId} không tồn tại`);
+    }
+
+    // VALIDATE: Kiểm tra xem subscription tenant này có thuộc về user đang login không
+    // Cách 1: Check tenant_name có chứa username không
+    const expectedTenantName = `${user.username}'s Shop`;
+    if (subTenant.tenant.tenant_name !== expectedTenantName) {
+      throw new BadRequestException(
+        `Bạn không có quyền tạo payment cho subscription tenant này. Chỉ được tạo payment cho subscription tenant mà bạn đã tạo.`
+      );
+    }
+
+    // Cách 2: Kiểm tra xem đã có payment thành công của user khác cho subscription tenant này chưa
+    const existingSuccessPayment = await this.prisma.subscriptionPayment.findFirst({
+      where: {
+        sub_tenant_id: dto.subTenantId,
+        payment_status: 'success',
+      },
+      include: {
+        subscription_tenant: {
+          include: {
+            tenant: {
+              include: {
+                users: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Nếu đã có payment thành công, check xem user đó có phải là user hiện tại không
+    if (existingSuccessPayment) {
+      const tenantUsers = existingSuccessPayment.subscription_tenant.tenant.users;
+      const isCurrentUserInTenant = tenantUsers.some(u => u.user_id === userId);
+      
+      if (!isCurrentUserInTenant) {
+        throw new BadRequestException(
+          `Subscription tenant này đã được kích hoạt bởi user khác. Bạn không thể tạo payment cho nó.`
+        );
+      }
     }
 
     // Tạo payment record
