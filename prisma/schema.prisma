@@ -206,8 +206,8 @@ model Product {
   barcode      String?
   description  String?
   measure_unit String?
-  basic_price  Decimal  @db.Decimal(10, 2)
-  unit_price   Decimal  @db.Decimal(10, 2)
+  import_price  Decimal  @db.Decimal(10, 2)
+  list_price   Decimal  @db.Decimal(10, 2)
   is_active    Boolean  @default(true)
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
@@ -312,9 +312,8 @@ model Orders {
   shift_id        Int
   user_id         Int // User who processed this order (cashier)
   customer_id     Int?
-  subtotal_amount Decimal   @db.Decimal(10, 2)
+  total_amount Decimal   @db.Decimal(10, 2)
   order_status    String
-  grand_total     Decimal   @db.Decimal(10, 2)
   notes           String?
   created_at      DateTime  @default(now())
   completed_at    DateTime?
