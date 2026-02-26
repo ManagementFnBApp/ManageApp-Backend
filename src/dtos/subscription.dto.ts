@@ -74,6 +74,13 @@ export class SubscriptionTenantResponseDto {
   is_expired: boolean;
 }
 
+export class ChangeSubscriptionDto {
+  @ApiProperty({ example: 2, description: 'ID của gói subscription mới muốn chuyển đến' })
+  @IsInt()
+  @IsNotEmpty()
+  newSubscriptionId: number;
+}
+
 // DTO cho Subscription
 export class CreateSubscriptionDto {
   @ApiProperty({ example: 'BASIC' })
@@ -94,6 +101,31 @@ export class CreateSubscriptionDto {
   @IsString()
   @IsNotEmpty()
   billingCycle: string; // MONTHLY, YEARLY
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  features?: any;
+}
+
+export class UpdateSubscriptionDto {
+  @ApiPropertyOptional({ example: 'PREMIUM' })
+  @IsString()
+  @IsOptional()
+  packageCode?: string;
+
+  @ApiPropertyOptional({ example: 'Premium package for large businesses' })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 599000 })
+  @IsOptional()
+  price?: number;
+
+  @ApiPropertyOptional({ example: 'YEARLY' })
+  @IsString()
+  @IsOptional()
+  billingCycle?: string; // MONTHLY, YEARLY
 
   @ApiPropertyOptional()
   @IsOptional()
