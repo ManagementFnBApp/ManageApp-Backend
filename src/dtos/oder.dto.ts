@@ -3,7 +3,7 @@ export class CreateOrderDto {
     userId: number;
     shiftId: number;
     note?: string;
-    
+    totalAmount: number;
 }
 
 export class UpdateOrderDto {
@@ -11,4 +11,17 @@ export class UpdateOrderDto {
     userId?: number;
     shiftId?: number;
     note?: string;
+    totalAmount?: number;
+}
+
+export class OrderResponseDto {
+    id: number;
+    customerId: number;
+    userId: number;
+    shiftId: number;
+    note: string;
+    totalAmount: number;
+    orderStatus: string;
+    completedAt?: Date | null;
+    cancelledAt?: Date | null;
 }
