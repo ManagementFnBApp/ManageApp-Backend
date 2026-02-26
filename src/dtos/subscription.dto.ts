@@ -15,7 +15,10 @@ export class CreateSubscriptionPaymentDto {
   @IsNotEmpty()
   method: string;
 
-  @ApiProperty({ example: 299000 })
+  @ApiProperty({ 
+    example: 299000,
+    description: 'Số tiền thanh toán - PHẢI BẰNG với price của subscription package'
+  })
   @IsNotEmpty()
   amount: number;
 
@@ -69,9 +72,18 @@ export class SubscriptionTenantResponseDto {
   subscription_id: number;
   tenant_id: number;
   number_of_renewals: number;
+  start_date: Date;
+  end_date?: Date | null;
   created_at: Date;
   updated_at: Date;
   is_expired: boolean;
+  
+  // Thông tin subscription package để user biết giá cần thanh toán
+  subscription?: {
+    package_code: string;
+    price: number;
+    billing_cycle: string;
+  };
 }
 
 export class ChangeSubscriptionDto {
@@ -130,6 +142,11 @@ export class UpdateSubscriptionDto {
   @ApiPropertyOptional()
   @IsOptional()
   features?: any;
+
+  @ApiPropertyOptional({ example: true, description: 'Trạng thái hoạt động của gói' })
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }
 
 export class SubscriptionResponseDto {
@@ -139,4 +156,8 @@ export class SubscriptionResponseDto {
   price: number;
   billing_cycle: string;
   features?: any;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+  deleted_at?: Date | null;
 }

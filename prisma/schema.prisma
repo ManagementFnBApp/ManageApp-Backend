@@ -99,16 +99,16 @@ model User {
   @@map("users")
 }
 
-model Profile{
-  profile_id String @id @default(uuid())
-  user_id Int @unique
-  full_name        String
-  avatar           String?
-  phone            String?
-  created_at       DateTime  @default(now())
-  updated_at       DateTime  @updatedAt
+model Profile {
+  profile_id String   @id @default(uuid())
+  user_id    Int      @unique
+  full_name  String
+  avatar     String?
+  phone      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  user  User @relation(fields: [user_id], references: [user_id])
+  user User @relation(fields: [user_id], references: [user_id])
 
   @@map("profiles")
 }
@@ -206,7 +206,7 @@ model Product {
   barcode      String?
   description  String?
   measure_unit String?
-  import_price  Decimal  @db.Decimal(10, 2)
+  import_price Decimal  @db.Decimal(10, 2)
   list_price   Decimal  @db.Decimal(10, 2)
   is_active    Boolean  @default(true)
   created_at   DateTime @default(now())
@@ -308,16 +308,16 @@ model MerchandiseRedemption {
 // ========================================
 
 model Orders {
-  order_id        Int       @id @default(autoincrement())
-  shift_id        Int
-  user_id         Int // User who processed this order (cashier)
-  customer_id     Int?
+  order_id     Int       @id @default(autoincrement())
+  shift_id     Int
+  user_id      Int // User who processed this order (cashier)
+  customer_id  Int?
   total_amount Decimal   @db.Decimal(10, 2)
-  order_status    String
-  notes           String?
-  created_at      DateTime  @default(now())
-  completed_at    DateTime?
-  cancelled_at    DateTime?
+  order_status String
+  notes        String?
+  created_at   DateTime  @default(now())
+  completed_at DateTime?
+  cancelled_at DateTime?
 
   shift       Shift       @relation(fields: [shift_id], references: [shift_id])
   user        User        @relation("OrderUser", fields: [user_id], references: [user_id])
@@ -361,12 +361,16 @@ model Payment {
 // ========================================
 
 model Subscription {
-  subscription_id Int     @id @default(autoincrement())
-  package_code    String  @unique
+  subscription_id Int       @id @default(autoincrement())
+  package_code    String    @unique
   description     String?
-  price           Decimal @db.Decimal(10, 2)
+  price           Decimal   @db.Decimal(10, 2)
   billing_cycle   String
   features        Json?
+  is_active       Boolean   @default(true)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @default(now()) @updatedAt
+  deleted_at      DateTime? // Soft delete - thời điểm đánh dấu xóa (sau 30 ngày sẽ xóa thật)
 
   subscription_tenants SubscriptionTenant[]
 
@@ -374,13 +378,15 @@ model Subscription {
 }
 
 model SubscriptionTenant {
-  sub_tenant_id      Int      @id @default(autoincrement())
+  sub_tenant_id      Int       @id @default(autoincrement())
   subscription_id    Int
   tenant_id          Int
-  number_of_renewals Int?     @default(0)
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-  is_expired         Boolean  @default(false)
+  number_of_renewals Int?      @default(0)
+  start_date         DateTime  @default(now())
+  end_date           DateTime? // Nullable để migrate được, sẽ được set khi tạo mới hoặc renew
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  is_expired         Boolean   @default(false)
 
   subscription          Subscription          @relation(fields: [subscription_id], references: [subscription_id])
   tenant                Tenant                @relation(fields: [tenant_id], references: [tenant_id])
