@@ -7,7 +7,6 @@ import {
   UpdateSubscriptionDto,
   SubscriptionResponseDto,
   CreateSubscriptionTenantDto,
-  ChangeSubscriptionDto,
   SubscriptionTenantResponseDto,
   CreateSubscriptionPaymentDto,
   UpdateSubscriptionPaymentStatusDto,
@@ -63,8 +62,11 @@ export class SubscriptionController {
   // ==================== SUBSCRIPTION TENANT ENDPOINTS ====================
 
   @Post('tenants')
-  @ApiOperation({ summary: 'Tạo subscription tenant (đăng ký gói cho user) - Yêu cầu login' })
-  @ApiResponse({ status: 201, description: 'Tạo subscription tenant thành công' })
+  @ApiOperation({ 
+    summary: 'Tạo subscription tenant (đăng ký gói cho user) - Yêu cầu login',
+    description: 'Tạo subscription tenant khi user chọn gói. Response sẽ bao gồm thông tin price để user biết số tiền cần thanh toán ở bước tiếp theo.'
+  })
+  @ApiResponse({ status: 201, description: 'Tạo subscription tenant thành công. Response bao gồm subscription info với price.' })
   @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
   async createSubscriptionTenant(
     @Body() dto: CreateSubscriptionTenantDto,
@@ -81,39 +83,15 @@ export class SubscriptionController {
     return this.subscriptionService.createSubscriptionTenant(dto, userId);
   }
 
-  @Put('tenants/:id/change-subscription')
-  @ApiOperation({ 
-    summary: 'Chuyển subscription tenant sang gói khác - Yêu cầu login (Shop Owner hoặc Admin)',
-    description: 'Cho phép chuyển tenant sang gói subscription khác. Yêu cầu quyền Shop Owner của tenant đó hoặc Admin.'
-  })
-  @ApiResponse({ status: 200, description: 'Chuyển subscription thành công' })
-  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
-  @ApiResponse({ status: 403, description: 'Không có quyền chuyển subscription' })
-  @ApiResponse({ status: 404, description: 'Subscription tenant hoặc subscription mới không tồn tại' })
-  async changeSubscription(
-    @Param('id', ParseIntPipe) subTenantId: number,
-    @Body() dto: ChangeSubscriptionDto,
-    @Request() req: any,
-  ): Promise<SubscriptionTenantResponseDto> {
-    const userId = req.user?.sub || req.user?.userId;
-    console.log('User từ token:', req.user);
-    console.log('UserId:', userId);
-    
-    if (!userId) {
-      throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
-    }
-    
-    return this.subscriptionService.changeSubscription(subTenantId, dto, userId);
-  }
-
   // ==================== SUBSCRIPTION PAYMENT ENDPOINTS ====================
 
   @Post('payments')
   @ApiOperation({ 
     summary: 'Tạo payment cho subscription - Yêu cầu login',
-    description: 'Khi payment_status là "success", hệ thống sẽ tự động tạo tenant và assign role SHOPOWNER cho user'
+    description: 'Tạo payment cho subscription tenant. LƯU Ý: Amount PHẢI BẰNG với price của subscription package. Khi payment_status là "success", hệ thống sẽ tự động assign tenant và role SHOPOWNER cho user'
   })
   @ApiResponse({ status: 201, description: 'Tạo payment thành công' })
+  @ApiResponse({ status: 400, description: 'Amount không khớp với price của subscription' })
   @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
   async createSubscriptionPayment(
     @Body() dto: CreateSubscriptionPaymentDto,
@@ -143,4 +121,27 @@ export class SubscriptionController {
   ): Promise<SubscriptionPaymentResponseDto> {
     return this.subscriptionService.updateSubscriptionPaymentStatus(id, dto);
   }
-}
+
+  // ==================== MAINTENANCE ENDPOINTS (for CronJob or Manual) ====================
+
+  @Post('maintenance/check-expired')
+  @AdminOnly()
+  @ApiOperation({ 
+    summary: 'Kiểm tra và cập nhật các subscription tenant đã hết hạn (Admin hoặc CronJob)',
+    description: 'Tự động set is_expired = true cho các tenant có end_date <= now'
+  })
+  @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
+  async checkExpiredSubscriptions(): Promise<{ updated: number; message: string }> {
+    return this.subscriptionService.checkAndUpdateExpiredSubscriptions();
+  }
+
+  @Delete('maintenance/cleanup-inactive')
+  @AdminOnly()
+  @ApiOperation({ 
+    summary: 'Xóa vĩnh viễn các subscription đã inactive hơn 30 ngày (Admin hoặc CronJob)',
+    description: 'Tự động xóa các subscription có is_active = false và deleted_at > 30 ngày trước'
+  })
+  @ApiResponse({ status: 200, description: 'Xóa thành công' })
+  async cleanupInactiveSubscriptions(): Promise<{ deleted: number; message: string }> {
+    return this.subscriptionService.deleteOldInactiveSubscriptions();
+  }}
