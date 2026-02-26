@@ -5,8 +5,10 @@ import {
   UpdateSubscriptionPaymentStatusDto,
   SubscriptionPaymentResponseDto,
   CreateSubscriptionTenantDto,
+  ChangeSubscriptionDto,
   SubscriptionTenantResponseDto,
   CreateSubscriptionDto,
+  UpdateSubscriptionDto,
   SubscriptionResponseDto,
 } from '../../dtos/subscription.dto';
 import { TenantService } from '../tenants/tenant.service';
@@ -49,6 +51,70 @@ export class SubscriptionService {
   async getAllSubscriptions(): Promise<SubscriptionResponseDto[]> {
     const subscriptions = await this.prisma.subscription.findMany();
     return subscriptions.map((sub) => this.transformSubscriptionToDto(sub));
+  }
+
+  async updateSubscription(id: number, dto: UpdateSubscriptionDto): Promise<SubscriptionResponseDto> {
+    // Kiểm tra subscription có tồn tại không
+    const existingSubscription = await this.prisma.subscription.findUnique({
+      where: { subscription_id: id },
+    });
+
+    if (!existingSubscription) {
+      throw new NotFoundException(`Subscription ID ${id} không tồn tại`);
+    }
+
+    // Nếu update package_code, kiểm tra xem có trùng với subscription khác không
+    if (dto.packageCode && dto.packageCode !== existingSubscription.package_code) {
+      const duplicatePackageCode = await this.prisma.subscription.findUnique({
+        where: { package_code: dto.packageCode },
+      });
+
+      if (duplicatePackageCode) {
+        throw new BadRequestException(`Package code ${dto.packageCode} đã tồn tại`);
+      }
+    }
+
+    // Update subscription
+    const updatedSubscription = await this.prisma.subscription.update({
+      where: { subscription_id: id },
+      data: {
+        package_code: dto.packageCode,
+        description: dto.description,
+        price: dto.price,
+        billing_cycle: dto.billingCycle,
+        features: dto.features,
+      },
+    });
+
+    return this.transformSubscriptionToDto(updatedSubscription);
+  }
+
+  async deleteSubscription(id: number): Promise<{ message: string }> {
+    // Kiểm tra subscription có tồn tại không
+    const existingSubscription = await this.prisma.subscription.findUnique({
+      where: { subscription_id: id },
+      include: {
+        subscription_tenants: true,
+      },
+    });
+
+    if (!existingSubscription) {
+      throw new NotFoundException(`Subscription ID ${id} không tồn tại`);
+    }
+
+    // Kiểm tra xem có subscription tenant nào đang sử dụng không
+    if (existingSubscription.subscription_tenants.length > 0) {
+      throw new BadRequestException(
+        `Không thể xóa subscription này vì đang có ${existingSubscription.subscription_tenants.length} tenant đang sử dụng. Vui lòng xóa hoặc chuyển các tenant sang gói khác trước.`
+      );
+    }
+
+    // Xóa subscription
+    await this.prisma.subscription.delete({
+      where: { subscription_id: id },
+    });
+
+    return { message: `Subscription ID ${id} đã được xóa thành công` };
   }
 
   // ==================== SUBSCRIPTION TENANT METHODS ====================
@@ -108,6 +174,86 @@ export class SubscriptionService {
     });
 
     return this.transformSubscriptionTenantToDto(subTenant);
+  }
+
+  async changeSubscription(
+    subTenantId: number,
+    dto: ChangeSubscriptionDto,
+    userId: number,
+  ): Promise<SubscriptionTenantResponseDto> {
+    // Kiểm tra subscription tenant có tồn tại không
+    const subTenant = await this.prisma.subscriptionTenant.findUnique({
+      where: { sub_tenant_id: subTenantId },
+      include: {
+        tenant: {
+          include: {
+            users: true,
+          },
+        },
+        subscription: true,
+      },
+    });
+
+    if (!subTenant) {
+      throw new NotFoundException(`Subscription tenant ID ${subTenantId} không tồn tại`);
+    }
+
+    // Kiểm tra subscription mới có tồn tại không
+    const newSubscription = await this.prisma.subscription.findUnique({
+      where: { subscription_id: dto.newSubscriptionId },
+    });
+
+    if (!newSubscription) {
+      throw new NotFoundException(`Subscription ID ${dto.newSubscriptionId} không tồn tại`);
+    }
+
+    // Kiểm tra xem subscription có giống với subscription hiện tại không
+    if (subTenant.subscription_id === dto.newSubscriptionId) {
+      throw new BadRequestException(
+        `Subscription tenant này đang sử dụng gói ${subTenant.subscription.package_code}. Không thể chuyển sang chính gói đó.`
+      );
+    }
+
+    // Kiểm tra quyền: Chỉ SHOPOWNER của tenant đó hoặc Admin mới được chuyển
+    const user = await this.prisma.user.findUnique({
+      where: { user_id: userId },
+      include: { role: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User ID ${userId} không tồn tại`);
+    }
+
+    // Check xem user có phải là owner của tenant này không
+    const isOwner = subTenant.tenant.users.some(
+      (u) => u.user_id === userId && u.tenant_id === subTenant.tenant_id && u.owner_manager_id === null
+    );
+
+    // Hoặc check xem user có role ADMIN không (nếu có logic Admin riêng)
+    const isAdmin = user.role?.role_code === 'ADMIN';
+
+    if (!isOwner && !isAdmin) {
+      throw new BadRequestException(
+        `Bạn không có quyền chuyển subscription cho tenant này. Chỉ shop owner hoặc admin mới có quyền.`
+      );
+    }
+
+    // Cập nhật subscription tenant
+    const updatedSubTenant = await this.prisma.subscriptionTenant.update({
+      where: { sub_tenant_id: subTenantId },
+      data: {
+        subscription_id: dto.newSubscriptionId,
+        number_of_renewals: (subTenant.number_of_renewals || 0) + 1,
+        is_expired: false, // Reset expired status khi chuyển gói mới
+        updated_at: new Date(),
+      },
+    });
+
+    console.log(
+      `✅ Subscription tenant ${subTenantId} đã chuyển từ gói ${subTenant.subscription.package_code} sang gói ${newSubscription.package_code}`
+    );
+
+    return this.transformSubscriptionTenantToDto(updatedSubTenant);
   }
 
   // ==================== SUBSCRIPTION PAYMENT METHODS ====================

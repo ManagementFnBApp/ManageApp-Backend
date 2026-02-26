@@ -1,11 +1,13 @@
-import { Controller, Get, Post, Put, Body, Param, ParseIntPipe, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { SubscriptionService } from './subscription.service';
 import { Public, AdminOnly } from '../../decorators/decorators';
 import {
   CreateSubscriptionDto,
+  UpdateSubscriptionDto,
   SubscriptionResponseDto,
   CreateSubscriptionTenantDto,
+  ChangeSubscriptionDto,
   SubscriptionTenantResponseDto,
   CreateSubscriptionPaymentDto,
   UpdateSubscriptionPaymentStatusDto,
@@ -36,6 +38,28 @@ export class SubscriptionController {
     return this.subscriptionService.getAllSubscriptions();
   }
 
+  @Put(':id')
+  @AdminOnly()
+  @ApiOperation({ summary: 'Cập nhật gói subscription (Chỉ Admin)' })
+  @ApiResponse({ status: 200, description: 'Cập nhật subscription thành công' })
+  @ApiResponse({ status: 404, description: 'Subscription không tồn tại' })
+  async updateSubscription(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateSubscriptionDto,
+  ): Promise<SubscriptionResponseDto> {
+    return this.subscriptionService.updateSubscription(id, dto);
+  }
+
+  @Delete(':id')
+  @AdminOnly()
+  @ApiOperation({ summary: 'Xóa gói subscription (Chỉ Admin)' })
+  @ApiResponse({ status: 200, description: 'Xóa subscription thành công' })
+  @ApiResponse({ status: 400, description: 'Không thể xóa vì đang có tenant sử dụng' })
+  @ApiResponse({ status: 404, description: 'Subscription không tồn tại' })
+  async deleteSubscription(@Param('id', ParseIntPipe) id: number): Promise<{ message: string }> {
+    return this.subscriptionService.deleteSubscription(id);
+  }
+
   // ==================== SUBSCRIPTION TENANT ENDPOINTS ====================
 
   @Post('tenants')
@@ -55,6 +79,31 @@ export class SubscriptionController {
     }
     
     return this.subscriptionService.createSubscriptionTenant(dto, userId);
+  }
+
+  @Put('tenants/:id/change-subscription')
+  @ApiOperation({ 
+    summary: 'Chuyển subscription tenant sang gói khác - Yêu cầu login (Shop Owner hoặc Admin)',
+    description: 'Cho phép chuyển tenant sang gói subscription khác. Yêu cầu quyền Shop Owner của tenant đó hoặc Admin.'
+  })
+  @ApiResponse({ status: 200, description: 'Chuyển subscription thành công' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  @ApiResponse({ status: 403, description: 'Không có quyền chuyển subscription' })
+  @ApiResponse({ status: 404, description: 'Subscription tenant hoặc subscription mới không tồn tại' })
+  async changeSubscription(
+    @Param('id', ParseIntPipe) subTenantId: number,
+    @Body() dto: ChangeSubscriptionDto,
+    @Request() req: any,
+  ): Promise<SubscriptionTenantResponseDto> {
+    const userId = req.user?.sub || req.user?.userId;
+    console.log('User từ token:', req.user);
+    console.log('UserId:', userId);
+    
+    if (!userId) {
+      throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
+    }
+    
+    return this.subscriptionService.changeSubscription(subTenantId, dto, userId);
   }
 
   // ==================== SUBSCRIPTION PAYMENT ENDPOINTS ====================
