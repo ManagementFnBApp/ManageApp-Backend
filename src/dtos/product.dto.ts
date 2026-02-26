@@ -29,12 +29,12 @@ export class CreateProductDto {
     @IsNumber()
     @IsNotEmpty()
     @Type(() => Number)
-    basicPrice: number;
+    listPrice: number;
 
     @IsNumber()
     @IsNotEmpty()
     @Type(() => Number)
-    unitPrice: number;
+    importPrice: number;
 
     @IsBoolean()
     @IsOptional()
@@ -69,12 +69,12 @@ export class UpdateProductDto {
     @IsNumber()
     @IsOptional()
     @Type(() => Number)
-    basicPrice?: number;
+    listPrice?: number;
 
     @IsNumber()
     @IsOptional()
     @Type(() => Number)
-    unitPrice?: number;
+    importPrice?: number;
 
     @IsBoolean()
     @IsOptional()
@@ -89,8 +89,8 @@ export class ProductResponseDto {
     barcode?: string | null;
     description?: string | null;
     measureUnit?: string | null;
-    basicPrice: number;
-    unitPrice: number;
+    listPrice: number;
+    importPrice: number;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;

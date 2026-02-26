@@ -33,8 +33,8 @@ export class ProductService {
                 barcode: createProductDto.barcode,
                 description: createProductDto.description,
                 measure_unit: createProductDto.measureUnit,
-                import_price: createProductDto.basicPrice,
-                list_price: createProductDto.unitPrice,
+                list_price: createProductDto.listPrice,
+                import_price: createProductDto.importPrice,
                 is_active: createProductDto.isActive ?? true,
             }
         });
@@ -107,8 +107,8 @@ export class ProductService {
                 barcode: updateProductDto.barcode,
                 description: updateProductDto.description,
                 measure_unit: updateProductDto.measureUnit,
-                import_price: updateProductDto.basicPrice,
-                list_price: updateProductDto.unitPrice,
+                list_price: updateProductDto.listPrice,
+                import_price: updateProductDto.importPrice,
                 is_active: updateProductDto.isActive,
             }
         });
@@ -161,8 +161,8 @@ export class ProductService {
             barcode: product.barcode,
             description: product.description,
             measureUnit: product.measure_unit,
-            basicPrice: Number(product.import_price),
-            unitPrice: Number(product.list_price),
+            listPrice: Number(product.list_price),
+            importPrice: Number(product.import_price),
             isActive: product.is_active,
             createdAt: product.created_at,
             updatedAt: product.updated_at,

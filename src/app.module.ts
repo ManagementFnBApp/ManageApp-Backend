@@ -19,6 +19,7 @@ import { AdminGuard } from './modules/auth/guard/admin.guard';
 import { getJwtExpiresIn, getJwtSecretKey } from './global/constants';
 import { ProfileModule } from './modules/profiles/profile.module';
 import { SubscriptionModule } from './modules/subscriptions/subscription.module';
+import { OrderModule } from './modules/orders/order.module';
 
 @Module({
   imports: [
@@ -46,7 +47,8 @@ import { SubscriptionModule } from './modules/subscriptions/subscription.module'
     ProductModule,
     InventoryModule,
     ProfileModule,
-    SubscriptionModule
+    SubscriptionModule,
+    OrderModule
   ],
   controllers: [AppController],
   providers: [
