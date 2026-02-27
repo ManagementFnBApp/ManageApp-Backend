@@ -5,11 +5,8 @@ import { JwtService } from "@nestjs/jwt";
 import { RegisterDto } from "../../dtos/register.dto";
 import { UserResponseDto } from "../../dtos/user.dto";
 import * as bcrypt from 'bcrypt'
-import { getJwtExpiresIn } from "src/global/constants";
+import { getJwtExpiresIn } from "src/config/jwt.config";
 import { ConfigService } from "@nestjs/config";
-import { TenantService } from "../tenants/tenant.service";
-import { RoleService } from "../roles/role.service";
-import { AdminService } from "../admins/admin.service";
 
 @Injectable()
 export class AuthService {
@@ -17,11 +14,8 @@ export class AuthService {
         private userService: UserService,
         private jwtService: JwtService,
         private configService: ConfigService,
-        private tenantService: TenantService,
-        private roleService: RoleService,
-        private adminService: AdminService,
     ) { }
-    
+
     async login({ username, password }: LoginDto): Promise<AuthPermission> {
         const user = await this.userService.getUserByUsername(username);
         if (!user) {
@@ -32,7 +26,7 @@ export class AuthService {
             throw new UnauthorizedException("Username or password is incorrect");
         }
         // Tạo payload với sub chứa user_id
-        const payload = { 
+        const payload = {
             sub: user.user_id,
             username: user.username,
             role: user.role,

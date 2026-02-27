@@ -107,7 +107,6 @@ CREATE TABLE "customers" (
     "tenant_id" INTEGER NOT NULL,
     "phone" TEXT NOT NULL,
     "full_name" TEXT,
-    "member_rank" TEXT,
     "loyalty_point" INTEGER DEFAULT 0,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -117,12 +116,18 @@ CREATE TABLE "customers" (
 -- CreateTable
 CREATE TABLE "product_categories" (
     "category_id" SERIAL NOT NULL,
-    "par_category_id" INTEGER,
-    "tenant_id" INTEGER NOT NULL,
     "category_name" TEXT NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "product_categories_pkey" PRIMARY KEY ("category_id")
+);
+
+-- CreateTable
+CREATE TABLE "TenantCategory" (
+    "tenant_id" INTEGER NOT NULL,
+    "category_id" INTEGER NOT NULL,
+
+    CONSTRAINT "TenantCategory_pkey" PRIMARY KEY ("tenant_id","category_id")
 );
 
 -- CreateTable
@@ -261,6 +266,10 @@ CREATE TABLE "subscriptions" (
     "price" DECIMAL(10,2) NOT NULL,
     "billing_cycle" TEXT NOT NULL,
     "features" JSONB,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(3),
 
     CONSTRAINT "subscriptions_pkey" PRIMARY KEY ("subscription_id")
 );
@@ -271,6 +280,8 @@ CREATE TABLE "subscription_tenants" (
     "subscription_id" INTEGER NOT NULL,
     "tenant_id" INTEGER NOT NULL,
     "number_of_renewals" INTEGER DEFAULT 0,
+    "start_date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "end_date" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "is_expired" BOOLEAN NOT NULL DEFAULT false,
@@ -345,7 +356,10 @@ ALTER TABLE "shift_cashiers" ADD CONSTRAINT "shift_cashiers_user_id_fkey" FOREIG
 ALTER TABLE "customers" ADD CONSTRAINT "customers_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("tenant_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "product_categories" ADD CONSTRAINT "product_categories_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("tenant_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "TenantCategory" ADD CONSTRAINT "TenantCategory_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("tenant_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TenantCategory" ADD CONSTRAINT "TenantCategory_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "product_categories"("category_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "products" ADD CONSTRAINT "products_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "product_categories"("category_id") ON DELETE RESTRICT ON UPDATE CASCADE;

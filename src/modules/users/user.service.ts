@@ -79,6 +79,38 @@ export class UserService {
         return this.transformToDto(user);
     }
 
+    async findOrCreate(data: { email: string, fullName: string }): Promise<UserResponseDto> {
+        let user = await this.prisma.user.findUnique({ 
+            where: { email: data.email },
+            include: {
+                role: true,
+                profile: true
+            }
+        });
+
+        // 2. Nếu chưa có thì tạo mới
+        if (!user) {
+            user = await this.prisma.user.create({
+                data: {
+                    email: data.email,
+                    username: data.email,
+                    password: '',
+                    profile: {
+                        create: {
+                            full_name: data.fullName
+                        }
+                    }
+                },
+                include: {
+                    role: true,
+                    profile: true
+                }
+            });
+        }
+
+        return this.transformToDto(user);
+    }
+
     //UPDATE PASSWORD
     async updatePassword(userId: number, newPassword: string): Promise<void> {
         const salt = await bcrypt.genSalt();

@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Get, Post } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { AuthPermission, LoginDto, LoginResponseDto } from "src/dtos/login.dto";
 import { ApiTags } from "@nestjs/swagger";
@@ -42,5 +42,5 @@ export class AuthController {
         return { message: 'Password reset successfully' };
     }
 
-
+    
 }

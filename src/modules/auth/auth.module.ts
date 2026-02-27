@@ -6,10 +6,19 @@ import { UserModule } from "../users/user.module";
 import { TenantModule } from "../tenants/tenant.module";
 import { RoleModule } from "../roles/role.module";
 import { AdminModule } from "../admins/admin.module";
+import { ConfigModule } from "@nestjs/config";
+import googleOauthConfig from "src/config/google-oauth.config";
 
 @ApiTags("Auth")
 @Module({
-    imports: [UserModule, TenantModule, RoleModule, AdminModule],
+    imports: [
+        ConfigModule,
+        ConfigModule.forFeature(googleOauthConfig),
+        UserModule, 
+        TenantModule, 
+        RoleModule, 
+        AdminModule,
+    ],
     providers: [AuthService],
     controllers: [AuthController],
 })
