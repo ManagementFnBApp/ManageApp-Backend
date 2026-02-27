@@ -7,8 +7,6 @@ import { UserModule } from './modules/users/user.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { RoleModule } from './modules/roles/role.module';
-import { AdminModule } from './modules/admins/admin.module';
-import { TenantModule } from './modules/tenants/tenant.module';
 import { ProductModule } from './modules/products/product.module';
 import { InventoryModule } from './modules/inventories/inventory.module';
 import { JwtModule } from '@nestjs/jwt';
@@ -43,8 +41,6 @@ import { OrderItemModule } from './modules/order_items/order-item.module';
     UserModule,
     AuthModule,
     RoleModule,
-    AdminModule,
-    TenantModule,
     ProductModule,
     InventoryModule,
     ProfileModule,
