@@ -338,6 +338,82 @@ export class SubscriptionService {
     };
   }
 
+  // ==================== MAINTENANCE METHODS (for CronJob) ====================
+
+  async checkAndUpdateExpiredSubscriptions(): Promise<{ updated: number; message: string }> {
+    // Tìm tất cả subscription tenant đã hết hạn nhưng chưa được đánh dấu
+    const expiredTenants = await this.prisma.subscriptionTenant.findMany({
+      where: {
+        is_expired: false,
+        end_date: {
+          lte: new Date(), // end_date <= now
+        },
+      },
+    });
+
+    // Update tất cả các tenant đã hết hạn
+    if (expiredTenants.length > 0) {
+      await this.prisma.subscriptionTenant.updateMany({
+        where: {
+          sub_tenant_id: {
+            in: expiredTenants.map((t) => t.sub_tenant_id),
+          },
+        },
+        data: {
+          is_expired: true,
+        },
+      });
+    }
+
+    console.log(`✅ Đã cập nhật ${expiredTenants.length} subscription tenant đã hết hạn`);
+
+    return {
+      updated: expiredTenants.length,
+      message: `Đã cập nhật ${expiredTenants.length} subscription tenant đã hết hạn`,
+    };
+  }
+
+  async deleteOldInactiveSubscriptions(): Promise<{ deleted: number; message: string }> {
+    // Tìm các subscription đã bị đánh dấu xóa (is_active = false) hơn 30 ngày
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const subscriptionsToDelete = await this.prisma.subscription.findMany({
+      where: {
+        is_active: false,
+        deleted_at: {
+           
+          lte: thirtyDaysAgo, // deleted_at <= 30 days ago
+        },
+      },
+      include: {
+        subscription_tenants: true,
+      },
+    });
+
+    // Chỉ xóa những subscription không còn tenant nào sử dụng
+    const safeToDelete = subscriptionsToDelete.filter(
+      (sub) => sub.subscription_tenants.length === 0
+    );
+
+    if (safeToDelete.length > 0) {
+      await this.prisma.subscription.deleteMany({
+        where: {
+          subscription_id: {
+            in: safeToDelete.map((s) => s.subscription_id),
+          },
+        },
+      });
+    }
+
+    console.log(`✅ Đã xóa vĩnh viễn ${safeToDelete.length} subscription đã inactive hơn 30 ngày`);
+
+    return {
+      deleted: safeToDelete.length,
+      message: `Đã xóa vĩnh viễn ${safeToDelete.length} subscription đã inactive hơn 30 ngày`,
+    };
+  }
+
   // ==================== SUBSCRIPTION PAYMENT METHODS ====================
   
   async createSubscriptionPayment(dto: CreateSubscriptionPaymentDto, userId: number): Promise<SubscriptionPaymentResponseDto> {
@@ -521,6 +597,31 @@ export class SubscriptionService {
       data: { is_active: true },
     });
 
+  }
+
+  // Helper: Tính toán end_date dựa vào billing_cycle
+  private calculateEndDate(billingCycle: string, startDate: Date = new Date()): Date {
+    const endDate = new Date(startDate);
+    
+    switch (billingCycle.toUpperCase()) {
+      case 'MONTHLY':
+        endDate.setMonth(endDate.getMonth() + 1);
+        break;
+      case 'QUARTERLY':
+        endDate.setMonth(endDate.getMonth() + 3);
+        break;
+      case 'YEARLY':
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        break;
+      case 'WEEKLY':
+        endDate.setDate(endDate.getDate() + 7);
+        break;
+      default:
+        // Default to 30 days if unknown billing cycle
+        endDate.setDate(endDate.getDate() + 30);
+    }
+    
+    return endDate;
   }
 
   // Helper: Tính toán end_date dựa vào billing_cycle
