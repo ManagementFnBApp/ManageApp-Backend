@@ -27,10 +27,10 @@ export class OrderService {
 
     async updateOrder(id: number, data: UpdateOrderDto): Promise<OrderResponseDto> {
         const existingOrder = await this.prisma.orders.findUnique({
-            where: { order_id: Number(id) }
+            where: { id: Number(id) }
         });
         const order = await this.prisma.orders.update({
-            where: { order_id: Number(id) },
+            where: { id: Number(id) },
             data: {
                 shift_id: data.shiftId,
                 user_id: data.userId,
@@ -47,7 +47,7 @@ export class OrderService {
 
     async completeOrder(id: number): Promise<OrderResponseDto> {
         const order = await this.prisma.orders.update({
-            where: { order_id: Number(id) },
+            where: { id: Number(id) },
             data: {
                 order_status: OrderStatus.COMPLETED,
                 completed_at: new Date()
@@ -58,7 +58,7 @@ export class OrderService {
 
     async cancelOrder(id: number): Promise<OrderResponseDto> {
         const order = await this.prisma.orders.update({
-            where: { order_id: Number(id) },
+            where: { id: Number(id) },
             data: {
                 order_status: OrderStatus.CANCELLED,
                 cancelled_at: new Date()
@@ -69,7 +69,7 @@ export class OrderService {
 
     transformToDto(order: any): OrderResponseDto {
         return {
-            id: order.order_id,
+            id: order.id,
             customerId: order.customer_id,
             userId: order.user_id,
             shiftId: order.shift_id,

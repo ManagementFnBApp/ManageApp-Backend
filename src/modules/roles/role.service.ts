@@ -9,7 +9,7 @@ export class RoleService {
     // Lấy tất cả roles
     async getAllRoles(): Promise<RoleResponseDto[]> {
         const roles = await this.prisma.role.findMany({
-            orderBy: { role_id: 'asc' }
+            orderBy: { id: 'asc' }
         });
         return roles.map(role => this.transformToDto(role));
     }
@@ -17,7 +17,7 @@ export class RoleService {
     // Lấy role theo ID
     async getRoleById(roleId: number): Promise<RoleResponseDto> {
         const role = await this.prisma.role.findUnique({
-            where: { role_id: roleId }
+            where: { id: roleId }
         });
 
         if (!role) {
@@ -66,7 +66,7 @@ export class RoleService {
     async updateRole(roleId: number, dto: UpdateRoleDto): Promise<RoleResponseDto> {
         // Kiểm tra role có tồn tại không
         const existed = await this.prisma.role.findUnique({
-            where: { role_id: roleId }
+            where: { id: roleId }
         });
 
         if (!existed) {
@@ -85,7 +85,7 @@ export class RoleService {
         }
 
         const role = await this.prisma.role.update({
-            where: { role_id: roleId },
+            where: { id: roleId },
             data: {
                 role_code: dto.roleCode,
                 description: dto.description,
@@ -100,7 +100,7 @@ export class RoleService {
     async deleteRole(roleId: number): Promise<{ message: string }> {
         // Kiểm tra role có tồn tại không
         const existed = await this.prisma.role.findUnique({
-            where: { role_id: roleId },
+            where: { id: roleId },
             include: {
                 users: true
             }
@@ -118,7 +118,7 @@ export class RoleService {
         }
 
         await this.prisma.role.delete({
-            where: { role_id: roleId }
+            where: { id: roleId }
         });
 
         return { message: `Đã xóa role ${existed.role_code} thành công` };
@@ -127,7 +127,7 @@ export class RoleService {
     // Helper method để transform Prisma Role sang RoleResponseDto
     private transformToDto(role: any): RoleResponseDto {
         return {
-            roleId: role.role_id,
+            roleId: role.id,
             roleCode: role.role_code,
             description: role.description,
             permissions: role.permissions

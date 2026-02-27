@@ -55,7 +55,7 @@ export class UserService {
             if (!role) {
                 throw new BadRequestException(`Role ${body.roleCode} không tồn tại`);
             }
-            roleId = role.role_id;
+            roleId = role.id;
         }
 
         const salt = await bcrypt.genSalt();
@@ -63,7 +63,6 @@ export class UserService {
 
         const user = await this.prisma.user.create({
             data: {
-                tenant_id: body.tenantId || null,
                 role_id: roleId,
                 shop_id: body.shopId || null,
                 owner_manager_id: body.ownerManagerId || null,
@@ -116,7 +115,7 @@ export class UserService {
         const salt = await bcrypt.genSalt();
         const hashPassword = await bcrypt.hash(newPassword, salt);
         await this.prisma.user.update({
-            where: { user_id: userId },
+            where: { id: userId },
             data: {
                 password: hashPassword,
             }
@@ -143,7 +142,7 @@ export class UserService {
     // Helper method to transform Prisma User to UserResponseDto
     private transformToDto(user: any): UserResponseDto {
         return {
-            user_id: user.user_id,
+            user_id: user.id,
             tenantId: user.tenant_id,
             shopId: user.shop_id,
             ownerManagerId: user.owner_manager_id,
