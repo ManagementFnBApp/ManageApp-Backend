@@ -9,7 +9,7 @@ export class OrderItemController {
         private readonly orderItemService: OrderItemService
     ) {}
 
-    @Roles(Role.ADMIN)
+    @Roles(Role.SHOP_OWNER)
     @Post()
     createOrderItem() {
         return '';

@@ -25,7 +25,3 @@ export enum ShiftStatus {
   ACTIVE = 'ACTIVE',
   INACTIVE = 'INACTIVE',
 }
-
-export enum MemberRank {
-
-}
