@@ -9,7 +9,6 @@ import {
   CreateSubscriptionTenantDto,
   SubscriptionTenantResponseDto,
   CreateSubscriptionPaymentDto,
-  UpdateSubscriptionPaymentStatusDto,
   SubscriptionPaymentResponseDto,
 } from '../../dtos/subscription.dto';
 
@@ -88,7 +87,7 @@ export class SubscriptionController {
   @Post('payments')
   @ApiOperation({ 
     summary: 'Tạo payment cho subscription - Yêu cầu login',
-    description: 'Tạo payment cho subscription tenant. LƯU Ý: Amount PHẢI BẰNG với price của subscription package. Khi payment_status là "success", hệ thống sẽ tự động assign tenant và role SHOPOWNER cho user'
+    description: 'Tạo payment cho subscription tenant với status tự động là "pending". LƯU Ý: Amount PHẢI BẰNG với price của subscription package. Để kích hoạt tenant và assign role, cần update payment status thành "success" sau khi thanh toán thành công.'
   })
   @ApiResponse({ status: 201, description: 'Tạo payment thành công' })
   @ApiResponse({ status: 400, description: 'Amount không khớp với price của subscription' })
@@ -109,17 +108,18 @@ export class SubscriptionController {
   }
 
   @Put('payments/:id/status')
-  @Public()
   @ApiOperation({ 
-    summary: 'Cập nhật status của payment (Public - cho payment gateway webhook)',
-    description: 'Khi update payment_status thành "success", hệ thống sẽ tự động tạo tenant và assign role SHOPOWNER cho user'
+    summary: 'Confirm thanh toán thành công - Yêu cầu login',
+    description: 'Tự động update payment status từ "pending" thành "success". Hệ thống sẽ tự động kích hoạt tenant (is_active = true) và assign role SHOPOWNER cho user. Không cần body request.'
   })
-  @ApiResponse({ status: 200, description: 'Cập nhật payment status thành công' })
+  @ApiResponse({ status: 200, description: 'Confirm payment thành công' })
+  @ApiResponse({ status: 400, description: 'Payment không ở trạng thái pending' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  @ApiResponse({ status: 404, description: 'Payment không tồn tại' })
   async updatePaymentStatus(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateSubscriptionPaymentStatusDto,
   ): Promise<SubscriptionPaymentResponseDto> {
-    return this.subscriptionService.updateSubscriptionPaymentStatus(id, dto);
+    return this.subscriptionService.updateSubscriptionPaymentStatus(id);
   }
 
   // ==================== MAINTENANCE ENDPOINTS (for CronJob or Manual) ====================

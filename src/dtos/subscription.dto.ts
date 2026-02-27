@@ -22,18 +22,11 @@ export class CreateSubscriptionPaymentDto {
   @IsNotEmpty()
   amount: number;
 
-  @ApiProperty({ example: 'pending' })
-  @IsString()
-  @IsNotEmpty()
-  paymentStatus: string; // pending, success, failed
+  // paymentStatus sẽ tự động là 'pending' khi tạo mới
 }
 
-export class UpdateSubscriptionPaymentStatusDto {
-  @ApiProperty({ example: 'success' })
-  @IsString()
-  @IsNotEmpty()
-  paymentStatus: string; // success, failed, pending
-}
+// Không cần DTO cho update payment status nữa
+// API sẽ tự động update từ 'pending' thành 'success'
 
 export class SubscriptionPaymentResponseDto {
   sub_payment_id: number;
@@ -63,6 +56,11 @@ export class CreateSubscriptionTenantDto {
   @IsInt()
   @IsNotEmpty()
   subscriptionId: number;
+  
+  @ApiProperty({ example: 'My Shop Name', description: 'Tên tenant mà user muốn đặt' })
+  @IsString()
+  @IsNotEmpty()
+  tenantName: string;
   
   // userId sẽ được lấy từ token user đang login, không cần nhập
 }
