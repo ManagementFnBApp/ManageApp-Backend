@@ -21,10 +21,10 @@ export class SubscriptionService {
     private tenantService: TenantService,
     private roleService: RoleService,
     private adminService: AdminService,
-  ) {}
+  ) { }
 
   // ==================== SUBSCRIPTION METHODS ====================
-  
+
   async createSubscription(dto: CreateSubscriptionDto): Promise<SubscriptionResponseDto> {
     const existed = await this.prisma.subscription.findUnique({
       where: { package_code: dto.packageCode },
@@ -130,7 +130,7 @@ export class SubscriptionService {
   }
 
   // ==================== SUBSCRIPTION TENANT METHODS ====================
-  
+
   async createSubscriptionTenant(dto: CreateSubscriptionTenantDto, userId: number): Promise<SubscriptionTenantResponseDto> {
     // Kiểm tra subscription có tồn tại không
     const subscription = await this.prisma.subscription.findUnique({
@@ -247,7 +247,7 @@ export class SubscriptionService {
       where: {
         is_active: false,
         deleted_at: {
-           
+
           lte: thirtyDaysAgo, // deleted_at <= 30 days ago
         },
       },
@@ -338,89 +338,13 @@ export class SubscriptionService {
     };
   }
 
-  // ==================== MAINTENANCE METHODS (for CronJob) ====================
-
-  async checkAndUpdateExpiredSubscriptions(): Promise<{ updated: number; message: string }> {
-    // Tìm tất cả subscription tenant đã hết hạn nhưng chưa được đánh dấu
-    const expiredTenants = await this.prisma.subscriptionTenant.findMany({
-      where: {
-        is_expired: false,
-        end_date: {
-          lte: new Date(), // end_date <= now
-        },
-      },
-    });
-
-    // Update tất cả các tenant đã hết hạn
-    if (expiredTenants.length > 0) {
-      await this.prisma.subscriptionTenant.updateMany({
-        where: {
-          sub_tenant_id: {
-            in: expiredTenants.map((t) => t.sub_tenant_id),
-          },
-        },
-        data: {
-          is_expired: true,
-        },
-      });
-    }
-
-    console.log(`✅ Đã cập nhật ${expiredTenants.length} subscription tenant đã hết hạn`);
-
-    return {
-      updated: expiredTenants.length,
-      message: `Đã cập nhật ${expiredTenants.length} subscription tenant đã hết hạn`,
-    };
-  }
-
-  async deleteOldInactiveSubscriptions(): Promise<{ deleted: number; message: string }> {
-    // Tìm các subscription đã bị đánh dấu xóa (is_active = false) hơn 30 ngày
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const subscriptionsToDelete = await this.prisma.subscription.findMany({
-      where: {
-        is_active: false,
-        deleted_at: {
-           
-          lte: thirtyDaysAgo, // deleted_at <= 30 days ago
-        },
-      },
-      include: {
-        subscription_tenants: true,
-      },
-    });
-
-    // Chỉ xóa những subscription không còn tenant nào sử dụng
-    const safeToDelete = subscriptionsToDelete.filter(
-      (sub) => sub.subscription_tenants.length === 0
-    );
-
-    if (safeToDelete.length > 0) {
-      await this.prisma.subscription.deleteMany({
-        where: {
-          subscription_id: {
-            in: safeToDelete.map((s) => s.subscription_id),
-          },
-        },
-      });
-    }
-
-    console.log(`✅ Đã xóa vĩnh viễn ${safeToDelete.length} subscription đã inactive hơn 30 ngày`);
-
-    return {
-      deleted: safeToDelete.length,
-      message: `Đã xóa vĩnh viễn ${safeToDelete.length} subscription đã inactive hơn 30 ngày`,
-    };
-  }
-
   // ==================== SUBSCRIPTION PAYMENT METHODS ====================
-  
+
   async createSubscriptionPayment(dto: CreateSubscriptionPaymentDto, userId: number): Promise<SubscriptionPaymentResponseDto> {
     // Kiểm tra subscription tenant có tồn tại không
     const subTenant = await this.prisma.subscriptionTenant.findUnique({
       where: { sub_tenant_id: dto.subTenantId },
-      include: { 
+      include: {
         tenant: true,
         subscription: true, // Include subscription để validate price
       },
@@ -602,32 +526,7 @@ export class SubscriptionService {
   // Helper: Tính toán end_date dựa vào billing_cycle
   private calculateEndDate(billingCycle: string, startDate: Date = new Date()): Date {
     const endDate = new Date(startDate);
-    
-    switch (billingCycle.toUpperCase()) {
-      case 'MONTHLY':
-        endDate.setMonth(endDate.getMonth() + 1);
-        break;
-      case 'QUARTERLY':
-        endDate.setMonth(endDate.getMonth() + 3);
-        break;
-      case 'YEARLY':
-        endDate.setFullYear(endDate.getFullYear() + 1);
-        break;
-      case 'WEEKLY':
-        endDate.setDate(endDate.getDate() + 7);
-        break;
-      default:
-        // Default to 30 days if unknown billing cycle
-        endDate.setDate(endDate.getDate() + 30);
-    }
-    
-    return endDate;
-  }
 
-  // Helper: Tính toán end_date dựa vào billing_cycle
-  private calculateEndDate(billingCycle: string, startDate: Date = new Date()): Date {
-    const endDate = new Date(startDate);
-    
     switch (billingCycle.toUpperCase()) {
       case 'MONTHLY':
         endDate.setMonth(endDate.getMonth() + 1);
@@ -645,7 +544,7 @@ export class SubscriptionService {
         // Default to 30 days if unknown billing cycle
         endDate.setDate(endDate.getDate() + 30);
     }
-    
+
     return endDate;
   }
 
@@ -678,10 +577,10 @@ export class SubscriptionService {
       is_expired: subTenant.is_expired,
       subscription: subTenant.subscription
         ? {
-            package_code: subTenant.subscription.package_code,
-            price: parseFloat(subTenant.subscription.price),
-            billing_cycle: subTenant.subscription.billing_cycle,
-          }
+          package_code: subTenant.subscription.package_code,
+          price: parseFloat(subTenant.subscription.price),
+          billing_cycle: subTenant.subscription.billing_cycle,
+        }
         : undefined,
     };
   }
@@ -696,16 +595,16 @@ export class SubscriptionService {
       payment_status: payment.payment_status,
       tenant: payment.subscription_tenant?.tenant
         ? {
-            tenant_id: payment.subscription_tenant.tenant.tenant_id,
-            tenant_name: payment.subscription_tenant.tenant.tenant_name,
-          }
+          tenant_id: payment.subscription_tenant.tenant.tenant_id,
+          tenant_name: payment.subscription_tenant.tenant.tenant_name,
+        }
         : undefined,
       user: user
         ? {
-            user_id: user.user_id,
-            username: user.username,
-            role: user.role?.role_code || null,
-          }
+          user_id: user.user_id,
+          username: user.username,
+          role: user.role?.role_code || null,
+        }
         : undefined,
     };
   }
