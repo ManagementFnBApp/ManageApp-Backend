@@ -29,7 +29,7 @@ model Tenant {
   customers            Customer[]
   users                User[]
   shops                Shop[]
-  product_categories   ProductCategory[]
+  tenant_categories   TenantCategory[]
   subscription_tenants SubscriptionTenant[]
 
   @@map("tenants")
@@ -170,7 +170,6 @@ model Customer {
   tenant_id     Int
   phone         String
   full_name     String?
-  member_rank   String?
   loyalty_point Int?     @default(0)
   created_at    DateTime @default(now())
 
@@ -187,15 +186,23 @@ model Customer {
 
 model ProductCategory {
   category_id     Int     @id @default(autoincrement())
-  par_category_id Int?
-  tenant_id       Int
   category_name   String
   is_active       Boolean @default(true)
 
-  tenant   Tenant    @relation(fields: [tenant_id], references: [tenant_id])
+  tenants   TenantCategory[] 
   products Product[]
 
   @@map("product_categories")
+}
+
+model TenantCategory {
+  tenant_id Int 
+  category_id Int
+
+  tenant Tenant   @relation(fields: [tenant_id], references: [tenant_id])
+  category    ProductCategory @relation(fields: [category_id], references: [category_id])
+
+  @@id([tenant_id, category_id])
 }
 
 model Product {
@@ -203,7 +210,7 @@ model Product {
   category_id  Int
   product_name String
   sku          String   @unique
-  barcode      String?
+  barcode      String? 
   description  String?
   measure_unit String?
   import_price Decimal  @db.Decimal(10, 2)

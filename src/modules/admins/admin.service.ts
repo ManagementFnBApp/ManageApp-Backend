@@ -4,7 +4,7 @@ import { CreateAdminDto, AdminResponseDto, UpdateAdminDto, AdminLoginDto } from 
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from "@nestjs/config";
-import { getJwtExpiresIn } from "../../global/constants";
+import { getJwtExpiresIn } from "../../config/jwt.config";
 
 @Injectable()
 export class AdminService {
@@ -12,7 +12,7 @@ export class AdminService {
         private prisma: PrismaService,
         private jwtService: JwtService,
         private configService: ConfigService
-    ) {}
+    ) { }
 
     // Lấy tất cả admins
     async getAllAdmins(): Promise<AdminResponseDto[]> {
