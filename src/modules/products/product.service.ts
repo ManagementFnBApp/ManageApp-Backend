@@ -17,8 +17,8 @@ export class ProductService {
         }
 
         // Check if category exists
-        const category = await this.prisma.productCategory.findUnique({
-            where: { category_id: createProductDto.categoryId }
+        const category = await this.prisma.category.findUnique({
+            where: { id: createProductDto.categoryId }
         });
 
         if (!category) {
@@ -53,7 +53,7 @@ export class ProductService {
 
     async findOne(id: number): Promise<ProductResponseDto> {
         const product = await this.prisma.product.findUnique({
-            where: { product_id: id },
+            where: { id: id },
             include: {
                 category: true
             }
@@ -69,7 +69,7 @@ export class ProductService {
     async update(id: number, updateProductDto: UpdateProductDto): Promise<ProductResponseDto> {
         // Check if product exists
         const existingProduct = await this.prisma.product.findUnique({
-            where: { product_id: id }
+            where: { id: id }
         });
 
         if (!existingProduct) {
@@ -89,8 +89,8 @@ export class ProductService {
 
         // If category is being updated, check if it exists
         if (updateProductDto.categoryId) {
-            const category = await this.prisma.productCategory.findUnique({
-                where: { category_id: updateProductDto.categoryId }
+            const category = await this.prisma.category.findUnique({
+                where: { id: updateProductDto.categoryId }
             });
 
             if (!category) {
@@ -99,7 +99,7 @@ export class ProductService {
         }
 
         const product = await this.prisma.product.update({
-            where: { product_id: id },
+            where: { id: id },
             data: {
                 category_id: updateProductDto.categoryId,
                 product_name: updateProductDto.productName,
@@ -119,7 +119,7 @@ export class ProductService {
     async remove(id: number): Promise<{ message: string }> {
         // Check if product exists
         const product = await this.prisma.product.findUnique({
-            where: { product_id: id }
+            where: { id: id }
         });
 
         if (!product) {
@@ -128,7 +128,7 @@ export class ProductService {
 
         // Soft delete by setting is_active to false
         await this.prisma.product.update({
-            where: { product_id: id },
+            where: { id: id },
             data: { is_active: false }
         });
 
@@ -138,7 +138,7 @@ export class ProductService {
     async hardDelete(id: number): Promise<{ message: string }> {
         // Check if product exists
         const product = await this.prisma.product.findUnique({
-            where: { product_id: id }
+            where: { id: id }
         });
 
         if (!product) {
@@ -146,7 +146,7 @@ export class ProductService {
         }
 
         await this.prisma.product.delete({
-            where: { product_id: id }
+            where: { id: id }
         });
 
         return { message: `Product with ID ${id} has been permanently deleted` };
@@ -154,7 +154,7 @@ export class ProductService {
 
     private mapToResponseDto(product: any): ProductResponseDto {
         return {
-            productId: product.product_id,
+            productId: product.id,
             categoryId: product.category_id,
             productName: product.product_name,
             sku: product.sku,

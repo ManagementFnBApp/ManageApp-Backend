@@ -20,7 +20,7 @@ export class InventoryService {
     async create(createInventoryDto: CreateInventoryDto): Promise<InventoryResponseDto> {
         // Check if shop exists
         const shop = await this.prisma.shop.findUnique({
-            where: { shop_id: createInventoryDto.shopId }
+            where: { id: createInventoryDto.shopId }
         });
 
         if (!shop) {
@@ -50,7 +50,7 @@ export class InventoryService {
 
     async findOne(id: number): Promise<InventoryResponseDto> {
         const inventory = await this.prisma.inventory.findUnique({
-            where: { inventory_id: id },
+            where: { id: id },
             include: {
                 shop: true,
                 inventory_items: {
@@ -71,7 +71,7 @@ export class InventoryService {
     async update(id: number, updateInventoryDto: UpdateInventoryDto): Promise<InventoryResponseDto> {
         // Check if inventory exists
         const existingInventory = await this.prisma.inventory.findUnique({
-            where: { inventory_id: id }
+            where: { id: id }
         });
 
         if (!existingInventory) {
@@ -81,7 +81,7 @@ export class InventoryService {
         // If shop is being updated, check if it exists
         if (updateInventoryDto.shopId) {
             const shop = await this.prisma.shop.findUnique({
-                where: { shop_id: updateInventoryDto.shopId }
+                where: { id: updateInventoryDto.shopId }
             });
 
             if (!shop) {
@@ -90,7 +90,7 @@ export class InventoryService {
         }
 
         const inventory = await this.prisma.inventory.update({
-            where: { inventory_id: id },
+            where: { id: id },
             data: {
                 shop_id: updateInventoryDto.shopId,
                 current_quantity: updateInventoryDto.currentQuantity,
@@ -106,7 +106,7 @@ export class InventoryService {
     async remove(id: number): Promise<{ message: string }> {
         // Check if inventory exists
         const inventory = await this.prisma.inventory.findUnique({
-            where: { inventory_id: id }
+            where: { id: id }
         });
 
         if (!inventory) {
@@ -114,7 +114,7 @@ export class InventoryService {
         }
 
         await this.prisma.inventory.delete({
-            where: { inventory_id: id }
+            where: { id: id }
         });
 
         return { message: `Inventory with ID ${id} has been deleted` };
@@ -127,7 +127,7 @@ export class InventoryService {
     async createItem(createInventoryItemDto: CreateInventoryItemDto): Promise<InventoryItemResponseDto> {
         // Check if product exists
         const product = await this.prisma.product.findUnique({
-            where: { product_id: createInventoryItemDto.productId }
+            where: { id: createInventoryItemDto.productId }
         });
 
         if (!product) {
@@ -136,7 +136,7 @@ export class InventoryService {
 
         // Check if inventory exists
         const inventory = await this.prisma.inventory.findUnique({
-            where: { inventory_id: createInventoryItemDto.inventoryId }
+            where: { id: createInventoryItemDto.inventoryId }
         });
 
         if (!inventory) {
@@ -181,7 +181,7 @@ export class InventoryService {
 
     async findOneItem(id: number): Promise<InventoryItemResponseDto> {
         const item = await this.prisma.inventoryItem.findUnique({
-            where: { inventory_item_id: id },
+            where: { id: id },
             include: {
                 product: true,
                 inventory: true
@@ -198,7 +198,7 @@ export class InventoryService {
     async updateItem(id: number, updateInventoryItemDto: UpdateInventoryItemDto): Promise<InventoryItemResponseDto> {
         // Check if item exists
         const existingItem = await this.prisma.inventoryItem.findUnique({
-            where: { inventory_item_id: id }
+            where: { id: id }
         });
 
         if (!existingItem) {
@@ -206,7 +206,7 @@ export class InventoryService {
         }
 
         const item = await this.prisma.inventoryItem.update({
-            where: { inventory_item_id: id },
+            where: { id: id },
             data: {
                 product_id: updateInventoryItemDto.productId,
                 inventory_id: updateInventoryItemDto.inventoryId,
@@ -221,7 +221,7 @@ export class InventoryService {
     async removeItem(id: number): Promise<{ message: string }> {
         // Check if item exists
         const item = await this.prisma.inventoryItem.findUnique({
-            where: { inventory_item_id: id }
+            where: { id: id }
         });
 
         if (!item) {
@@ -229,7 +229,7 @@ export class InventoryService {
         }
 
         await this.prisma.inventoryItem.delete({
-            where: { inventory_item_id: id }
+            where: { id: id }
         });
 
         return { message: `Inventory item with ID ${id} has been deleted` };
@@ -241,7 +241,7 @@ export class InventoryService {
 
     private mapToInventoryResponseDto(inventory: any): InventoryResponseDto {
         return {
-            inventoryId: inventory.inventory_id,
+            inventoryId: inventory.id,
             shopId: inventory.shop_id,
             currentQuantity: inventory.current_quantity,
             minimumThreshold: inventory.minimum_threshold,
@@ -253,7 +253,7 @@ export class InventoryService {
 
     private mapToInventoryItemResponseDto(item: any): InventoryItemResponseDto {
         return {
-            inventoryItemId: item.inventory_item_id,
+            inventoryItemId: item.id,
             productId: item.product_id,
             inventoryId: item.inventory_id,
             quantity: item.quantity,
