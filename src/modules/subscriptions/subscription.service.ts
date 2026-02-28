@@ -174,6 +174,13 @@ export class SubscriptionService {
       },
     });
 
+    // GÁN SHOP_ID CHO USER NGAY (dù shop chưa active)
+    // Điều này giúp tìm được user khi payment success
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { shop_id: shop.id },
+    });
+
     // Tính toán thời hạn dựa vào billing_cycle của subscription
     const startDate = new Date();
     const endDate = this.calculateEndDate(subscription.billing_cycle, startDate);
