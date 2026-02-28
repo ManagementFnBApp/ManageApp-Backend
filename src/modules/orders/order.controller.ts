@@ -1,10 +1,10 @@
-import { Body, Controller, Param, Post, Put } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Put } from "@nestjs/common";
 import { OrderService } from "./order.service";
 import { CreateOrderDto, OrderResponseDto, UpdateOrderDto } from "src/dtos/oder.dto";
 import { ResponseData, ResponseType } from "src/global/globalResponse";
-import { HttpMessage, HttpStatus } from "src/global/globalEnum";
+import { HttpMessage, HttpStatus, Role } from "src/global/globalEnum";
 import { ApiTags } from "@nestjs/swagger";
-import { Public } from "src/decorators/decorators";
+import { Public, Roles } from "src/decorators/decorators";
 
 @ApiTags('Orders')
 @Controller('orders')
@@ -40,5 +40,23 @@ export class OrderController {
         @Param('id') id: number
     ): Promise<ResponseType<OrderResponseDto>> {
         return new ResponseData( await this.orderService.cancelOrder(id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    }
+
+    @Roles(Role.STAFF)
+    @Get('pending')
+    async getAllPendingOrders(): Promise<ResponseType<OrderResponseDto[]>> {
+        return new ResponseData<OrderResponseDto[]>( await this.orderService.getAllPendingOrders(), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    }
+
+    @Roles(Role.STAFF)
+    @Get('completed')
+    async getAllCompletedOrders(): Promise<ResponseType<OrderResponseDto[]>> {
+        return new ResponseData<OrderResponseDto[]>( await this.orderService.getAllCompletedOrders(), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    }
+
+    @Roles(Role.STAFF)
+    @Get('cancelled')
+    async getAllCancelledOrders(): Promise<ResponseType<OrderResponseDto[]>> {
+        return new ResponseData<OrderResponseDto[]>( await this.orderService.getAllCancelledOrders(), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 }
