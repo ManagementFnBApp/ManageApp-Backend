@@ -67,33 +67,14 @@ export class OrderService {
         return this.transformToDto(order);
     }
 
-    async getAllPendingOrders(): Promise<OrderResponseDto[]> {
+    async getAllOrders(status: string): Promise<OrderResponseDto[]> {
         const orders = await this.prisma.orders.findMany({
             where: {
-                order_status: OrderStatus.PENDING,
+                order_status: status,
             }
         });
         return orders.map(order => this.transformToDto(order));
     }
-
-    async getAllCompletedOrders(): Promise<OrderResponseDto[]> {
-        const orders = await this.prisma.orders.findMany({
-            where: {
-                order_status: OrderStatus.COMPLETED,
-            }
-        });
-        return orders.map(order => this.transformToDto(order));
-    }
-
-    async getAllCancelledOrders(): Promise<OrderResponseDto[]> {
-        const orders = await this.prisma.orders.findMany({
-            where: {
-                order_status: OrderStatus.CANCELLED,
-            }
-        });
-        return orders.map(order => this.transformToDto(order));
-    }
-
 
     transformToDto(order: any): OrderResponseDto {
         return {

@@ -43,20 +43,8 @@ export class OrderController {
     }
 
     @Roles(Role.STAFF)
-    @Get('pending')
-    async getAllPendingOrders(): Promise<ResponseType<OrderResponseDto[]>> {
-        return new ResponseData<OrderResponseDto[]>( await this.orderService.getAllPendingOrders(), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
-    }
-
-    @Roles(Role.STAFF)
-    @Get('completed')
-    async getAllCompletedOrders(): Promise<ResponseType<OrderResponseDto[]>> {
-        return new ResponseData<OrderResponseDto[]>( await this.orderService.getAllCompletedOrders(), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
-    }
-
-    @Roles(Role.STAFF)
-    @Get('cancelled')
-    async getAllCancelledOrders(): Promise<ResponseType<OrderResponseDto[]>> {
-        return new ResponseData<OrderResponseDto[]>( await this.orderService.getAllCancelledOrders(), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    @Get('')
+    async getAllPendingOrders(@Body() status: string): Promise<ResponseType<OrderResponseDto[]>> {
+        return new ResponseData<OrderResponseDto[]>( await this.orderService.getAllOrders(status), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 }

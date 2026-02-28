@@ -371,7 +371,7 @@ export class SubscriptionService {
     // VALIDATE: Kiểm tra xem đã có payment thành công cho shop subscription này chưa
     const existingSuccessPayment = await this.prisma.subscriptionPayment.findFirst({
       where: {
-        sub_shop_id: dto.sub_shop_id,
+        id: dto.sub_shop_id,
         payment_status: 'success',
       },
     });
