@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put } from "@nestjs/common";
+import { Body, Controller, Param, Post, Put } from "@nestjs/common";
 import { OrderService } from "./order.service";
 import { CreateOrderDto, OrderResponseDto, UpdateOrderDto } from "src/dtos/oder.dto";
 import { ResponseData, ResponseType } from "src/global/globalResponse";
@@ -42,8 +42,8 @@ export class OrderController {
         return new ResponseData( await this.orderService.cancelOrder(id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 
-    @Roles(Role.STAFF)
-    @Get('')
+    @Roles(Role.STAFF, Role.SHOPOWNER)
+    @Post('')
     async getAllPendingOrders(@Body() status: string): Promise<ResponseType<OrderResponseDto[]>> {
         return new ResponseData<OrderResponseDto[]>( await this.orderService.getAllOrders(status), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
