@@ -1,7 +1,7 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ClassSerializerInterceptor } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 declare const module: any;
@@ -22,6 +22,13 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
   });
+
+  // Enable global validation with auto-transform
+  app.useGlobalPipes(new ValidationPipe({
+    transform: true, // Tự động transform kiểu dữ liệu (string "1" -> number 1)
+    whitelist: true, // Loại bỏ các field không có trong DTO
+    forbidNonWhitelisted: false, // Không throw error với field không có trong DTO
+  }));
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 

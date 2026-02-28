@@ -13,7 +13,7 @@ import googleOauthConfig from "src/config/google-oauth.config";
         ConfigModule,
         ConfigModule.forFeature(googleOauthConfig),
         UserModule, 
-        RoleModule, 
+        RoleModule,
     ],
     providers: [AuthService],
     controllers: [AuthController],

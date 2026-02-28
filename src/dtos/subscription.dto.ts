@@ -6,7 +6,7 @@ export class CreateSubscriptionPaymentDto {
   @ApiProperty({ example: 1 })
   @IsInt()
   @IsNotEmpty()
-  subTenantId: number;
+  sub_shop_id: number;
   
   // userId sẽ được lấy từ token user đang login, không cần nhập
 
@@ -30,16 +30,16 @@ export class CreateSubscriptionPaymentDto {
 
 export class SubscriptionPaymentResponseDto {
   sub_payment_id: number;
-  sub_tenant_id: number;
+  sub_shop_id: number;
   method: string;
   amount: number;
   created_at: Date;
   payment_status: string;
   
-  // Thông tin tenant nếu đã tạo (khi payment success)
-  tenant?: {
-    tenant_id: number;
-    tenant_name: string;
+  // Thông tin shop nếu đã tạo (khi payment success)
+  shop?: {
+    shop_id: number;
+    shop_name: string;
   };
   
   // Thông tin user
@@ -50,25 +50,25 @@ export class SubscriptionPaymentResponseDto {
   };
 }
 
-// DTO cho Subscription Tenant
-export class CreateSubscriptionTenantDto {
+// DTO cho Subscription Shop
+export class CreateSubscriptionShopDto {
   @ApiProperty({ example: 1 })
   @IsInt()
   @IsNotEmpty()
-  subscriptionId: number;
+  subscription_id: number;
   
-  @ApiProperty({ example: 'My Shop Name', description: 'Tên tenant mà user muốn đặt' })
+  @ApiProperty({ example: 'My Shop Name', description: 'Tên shop mà user muốn đặt' })
   @IsString()
   @IsNotEmpty()
-  tenantName: string;
+  shop_name: string;
   
   // userId sẽ được lấy từ token user đang login, không cần nhập
 }
 
-export class SubscriptionTenantResponseDto {
-  sub_tenant_id: number;
+export class SubscriptionShopResponseDto {
+  sub_shop_id: number;
   subscription_id: number;
-  tenant_id: number;
+  shop_id: number;
   number_of_renewals: number;
   start_date: Date;
   end_date?: Date | null;
@@ -88,7 +88,7 @@ export class ChangeSubscriptionDto {
   @ApiProperty({ example: 2, description: 'ID của gói subscription mới muốn chuyển đến' })
   @IsInt()
   @IsNotEmpty()
-  newSubscriptionId: number;
+  new_subscription_id: number;
 }
 
 // DTO cho Subscription
@@ -96,7 +96,7 @@ export class CreateSubscriptionDto {
   @ApiProperty({ example: 'BASIC' })
   @IsString()
   @IsNotEmpty()
-  packageCode: string;
+  package_code: string;
 
   @ApiPropertyOptional({ example: 'Basic package for small businesses' })
   @IsString()
@@ -110,7 +110,7 @@ export class CreateSubscriptionDto {
   @ApiProperty({ example: 'MONTHLY' })
   @IsString()
   @IsNotEmpty()
-  billingCycle: string; // MONTHLY, YEARLY
+  billing_cycle: string; // MONTHLY, YEARLY
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -121,7 +121,7 @@ export class UpdateSubscriptionDto {
   @ApiPropertyOptional({ example: 'PREMIUM' })
   @IsString()
   @IsOptional()
-  packageCode?: string;
+  package_code?: string;
 
   @ApiPropertyOptional({ example: 'Premium package for large businesses' })
   @IsString()
@@ -135,7 +135,7 @@ export class UpdateSubscriptionDto {
   @ApiPropertyOptional({ example: 'YEARLY' })
   @IsString()
   @IsOptional()
-  billingCycle?: string; // MONTHLY, YEARLY
+  billing_cycle?: string; // MONTHLY, YEARLY
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -144,7 +144,7 @@ export class UpdateSubscriptionDto {
   @ApiPropertyOptional({ example: true, description: 'Trạng thái hoạt động của gói' })
   @IsBoolean()
   @IsOptional()
-  isActive?: boolean;
+  is_active?: boolean;
 }
 
 export class SubscriptionResponseDto {

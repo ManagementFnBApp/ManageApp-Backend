@@ -1,6 +1,6 @@
-import { Injectable, BadRequestException } from "@nestjs/common";
+import { Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
-import { CreateUserDto, UserResponseDto } from "../../dtos/user.dto";
+import { CreateUserDto, UpdateUserDto, UserResponseDto, AssignRoleDto } from "../../dtos/user.dto";
 import * as bcrypt from 'bcrypt'
 
 @Injectable()
@@ -46,14 +46,14 @@ export class UserService {
             throw new BadRequestException("Email or username was existed");
         }
 
-        // Tìm role nếu có roleCode
+        // Tìm role nếu có role_code
         let roleId: number | null = null;
-        if (body.roleCode) {
+        if (body.role_code) {
             const role = await this.prisma.role.findUnique({
-                where: { role_code: body.roleCode }
+                where: { role_code: body.role_code }
             });
             if (!role) {
-                throw new BadRequestException(`Role ${body.roleCode} không tồn tại`);
+                throw new BadRequestException(`Role ${body.role_code} không tồn tại`);
             }
             roleId = role.id;
         }
@@ -64,8 +64,8 @@ export class UserService {
         const user = await this.prisma.user.create({
             data: {
                 role_id: roleId,
-                shop_id: body.shopId || null,
-                owner_manager_id: body.ownerManagerId || null,
+                shop_id: body.shop_id || null,
+                owner_manager_id: body.owner_manager_id || null,
                 email: body.email,
                 username: body.username,
                 password: hashPassword
@@ -76,6 +76,124 @@ export class UserService {
             }
         });
         return this.transformToDto(user);
+    }
+
+    //UPDATE USER
+    async updateUser(userId: number, body: UpdateUserDto): Promise<UserResponseDto> {
+        // Kiểm tra xem user có tồn tại không
+        const existingUser = await this.prisma.user.findUnique({
+            where: { id: userId }
+        });
+
+        if (!existingUser) {
+            throw new NotFoundException(`User với ID ${userId} không tồn tại`);
+        }
+
+        // Kiểm tra email/username có bị trùng không (nếu có update)
+        if (body.email || body.username) {
+            const duplicateUser = await this.prisma.user.findFirst({
+                where: {
+                    AND: [
+                        { id: { not: userId } }, // Loại trừ user hiện tại
+                        {
+                            OR: [
+                                body.email ? { email: body.email } : {},
+                                body.username ? { username: body.username } : {}
+                            ]
+                        }
+                    ]
+                }
+            });
+
+            if (duplicateUser) {
+                throw new BadRequestException("Email hoặc username đã tồn tại");
+            }
+        }
+
+        // Validate role_id nếu có
+        if (body.role_id !== undefined && body.role_id !== null) {
+            const roleExists = await this.prisma.role.findUnique({
+                where: { id: body.role_id }
+            });
+            if (!roleExists) {
+                throw new BadRequestException(`Role với ID ${body.role_id} không tồn tại`);
+            }
+        }
+
+        // Update user data
+        const userData: any = {};
+        if (body.email !== undefined) userData.email = body.email;
+        if (body.username !== undefined) userData.username = body.username;
+        if (body.shop_id !== undefined) userData.shop_id = body.shop_id;
+        if (body.role_id !== undefined) userData.role_id = body.role_id;
+        if (body.is_active !== undefined) userData.is_active = body.is_active;
+
+        // Update profile data nếu có
+        const profileData: any = {};
+        if (body.full_name !== undefined) profileData.full_name = body.full_name;
+        if (body.phone !== undefined) profileData.phone = body.phone;
+        if (body.avatar !== undefined) profileData.avatar = body.avatar;
+
+        const updatedUser = await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                ...userData,
+                ...(Object.keys(profileData).length > 0 && {
+                    profile: {
+                        upsert: {
+                            create: profileData,
+                            update: profileData
+                        }
+                    }
+                })
+            },
+            include: {
+                role: true,
+                profile: true
+            }
+        });
+
+        return this.transformToDto(updatedUser);
+    }
+
+    //ASSIGN ADMIN ROLE TO USER (Public API - không cần token)
+    async assignAdminRole(userId: number, dto: AssignRoleDto): Promise<UserResponseDto> {
+        // Kiểm tra user có tồn tại không
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId }
+        });
+
+        if (!user) {
+            throw new NotFoundException(`User với ID ${userId} không tồn tại`);
+        }
+
+        // Kiểm tra role có tồn tại không
+        const role = await this.prisma.role.findUnique({
+            where: { id: dto.role_id }
+        });
+
+        if (!role) {
+            throw new BadRequestException(`Role với ID ${dto.role_id} không tồn tại`);
+        }
+
+        // CHỈ CHO PHÉP GÁN ROLE ADMIN QUA API NÀY
+        if (role.role_code !== 'ADMIN') {
+            throw new BadRequestException(
+                `API này chỉ dùng để gán role ADMIN. Role SHOPOWNER được tự động gán khi thanh toán subscription thành công.`
+            );
+        }
+
+        // Assign role ADMIN cho user
+        const updatedUser = await this.prisma.user.update({
+            where: { id: userId },
+            data: { role_id: dto.role_id },
+            include: {
+                role: true,
+                profile: true
+            }
+        });
+
+        return this.transformToDto(updatedUser);
     }
 
     async findOrCreate(data: { email: string, fullName: string }): Promise<UserResponseDto> {
@@ -143,18 +261,17 @@ export class UserService {
     private transformToDto(user: any): UserResponseDto {
         return {
             user_id: user.id,
-            tenantId: user.tenant_id,
-            shopId: user.shop_id,
-            ownerManagerId: user.owner_manager_id,
-            roleId: user.role_id,
+            shop_id: user.shop_id,
+            owner_manager_id: user.owner_manager_id,
+            role_id: user.role_id,
             email: user.email,
             username: user.username,
             password: user.password,
-            isActive: user.is_active,
-            lastLogin: user.last_login,
+            is_active: user.is_active,
+            last_login: user.last_login,
             role: user.role?.role_code || null,
-            createdAt: user.created_at,
-            updatedAt: user.updated_at,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
             profile: user.profile ? {
                 profile_id: user.profile.profile_id,
                 full_name: user.profile.full_name,

@@ -30,7 +30,7 @@ export class AuthService {
             sub: user.user_id,
             username: user.username,
             role: user.role,
-            ownerManagerId: user.ownerManagerId
+            owner_manager_id: user.owner_manager_id
         };
         return new AuthPermission({
             user_id: user.user_id,
@@ -41,12 +41,11 @@ export class AuthService {
 
     //REGISTER
     async register(dto: RegisterDto): Promise<UserResponseDto> {
-        // Register cơ bản - không tạo tenant
-        // Tenant sẽ được tạo sau khi user thanh toán subscription thành công
+        // Register cơ bản - không tạo shop
+        // Shop sẽ được tạo sau khi user thanh toán subscription thành công
         return this.userService.createUser({
             ...dto,
-            tenantId: undefined,
-            roleCode: undefined,
+            role_code: undefined,
         });
     }
 

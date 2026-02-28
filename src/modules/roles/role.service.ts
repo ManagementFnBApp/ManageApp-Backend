@@ -44,16 +44,16 @@ export class RoleService {
     async createRole(dto: CreateRoleDto): Promise<RoleResponseDto> {
         // Kiểm tra role_code đã tồn tại chưa
         const existed = await this.prisma.role.findUnique({
-            where: { role_code: dto.roleCode }
+            where: { role_code: dto.role_code }
         });
 
         if (existed) {
-            throw new BadRequestException(`Role code ${dto.roleCode} was existed`);
+            throw new BadRequestException(`Role code ${dto.role_code} was existed`);
         }
 
         const role = await this.prisma.role.create({
             data: {
-                role_code: dto.roleCode,
+                role_code: dto.role_code,
                 description: dto.description,
                 permissions: dto.permissions
             }
@@ -74,20 +74,20 @@ export class RoleService {
         }
 
         // Nếu update role_code, kiểm tra trùng
-        if (dto.roleCode && dto.roleCode !== existed.role_code) {
+        if (dto.role_code && dto.role_code !== existed.role_code) {
             const duplicateCode = await this.prisma.role.findUnique({
-                where: { role_code: dto.roleCode }
+                where: { role_code: dto.role_code }
             });
 
             if (duplicateCode) {
-                throw new BadRequestException(`Role code ${dto.roleCode} was existed`);
+                throw new BadRequestException(`Role code ${dto.role_code} was existed`);
             }
         }
 
         const role = await this.prisma.role.update({
             where: { id: roleId },
             data: {
-                role_code: dto.roleCode,
+                role_code: dto.role_code,
                 description: dto.description,
                 permissions: dto.permissions
             }
@@ -127,10 +127,12 @@ export class RoleService {
     // Helper method để transform Prisma Role sang RoleResponseDto
     private transformToDto(role: any): RoleResponseDto {
         return {
-            roleId: role.id,
-            roleCode: role.role_code,
+            role_id: role.id,
+            role_code: role.role_code,
             description: role.description,
-            permissions: role.permissions
+            permissions: role.permissions,
+            created_at: role.created_at,
+            updated_at: role.updated_at
         };
     }
 }
