@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { SubscriptionService } from './subscription.service';
+import { ShopSubscriptionService } from '../shop-subscriptions/shop-subscription.service';
 import { Public, AdminOnly } from '../../decorators/decorators';
 import {
   CreateSubscriptionDto,
@@ -16,7 +17,10 @@ import {
 @ApiBearerAuth()
 @Controller('subscriptions')
 export class SubscriptionController {
-  constructor(private readonly subscriptionService: SubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: SubscriptionService,
+    private readonly shopSubscriptionService: ShopSubscriptionService,
+  ) {}
 
   // ==================== SUBSCRIPTION ENDPOINTS ====================
   // Chỉ ADMIN mới được tạo/sửa/xóa subscription packages
@@ -85,7 +89,7 @@ export class SubscriptionController {
       throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
     }
     
-    return this.subscriptionService.createSubscriptionShop(dto, userId);
+    return this.shopSubscriptionService.createSubscriptionShop(dto, userId);
   }
 
   // ==================== SUBSCRIPTION PAYMENT ENDPOINTS ====================
@@ -112,7 +116,7 @@ export class SubscriptionController {
       throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
     }
     
-    return this.subscriptionService.createSubscriptionPayment(dto, userId);
+    return this.shopSubscriptionService.createSubscriptionPayment(dto, userId);
   }
 
   @Put('payments/:id/status')
@@ -128,7 +132,7 @@ export class SubscriptionController {
   async updatePaymentStatus(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<SubscriptionPaymentResponseDto> {
-    return this.subscriptionService.updateSubscriptionPaymentStatus(id);
+    return this.shopSubscriptionService.updateSubscriptionPaymentStatus(id);
   }
 
   // ==================== MAINTENANCE ENDPOINTS (for CronJob or Manual) ====================
@@ -141,7 +145,7 @@ export class SubscriptionController {
   })
   @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
   async checkExpiredSubscriptions(): Promise<{ updated: number; message: string }> {
-    return this.subscriptionService.checkAndUpdateExpiredSubscriptions();
+    return this.shopSubscriptionService.checkAndUpdateExpiredSubscriptions();
   }
 
   @Delete('maintenance/cleanup-inactive')
@@ -153,4 +157,16 @@ export class SubscriptionController {
   @ApiResponse({ status: 200, description: 'Xóa thành công' })
   async cleanupInactiveSubscriptions(): Promise<{ deleted: number; message: string }> {
     return this.subscriptionService.deleteOldInactiveSubscriptions();
-  }}
+  }
+
+  @Delete('maintenance/cleanup-unpaid-shops')
+  @AdminOnly()
+  @ApiOperation({ 
+    summary: 'Xóa các shop chưa thanh toán sau 1 giờ (Admin hoặc CronJob)',
+    description: 'Tự động xóa các shop có is_active = false và created_at > 1 giờ trước mà không có payment success'
+  })
+  @ApiResponse({ status: 200, description: 'Xóa thành công' })
+  async cleanupUnpaidShops(): Promise<{ deleted: number; message: string }> {
+    return this.shopSubscriptionService.deleteUnpaidShops();
+  }
+}
