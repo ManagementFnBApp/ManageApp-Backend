@@ -11,7 +11,7 @@ export enum HttpMessage {
 
 export enum Role {
   ADMIN = 'ADMIN',
-  SHOP_OWNER = 'SHOP_OWNER',
+  SHOPOWNER = 'SHOPOWNER',
   STAFF = 'STAFF',
 }
 
@@ -24,8 +24,4 @@ export enum OrderStatus {
 export enum ShiftStatus {
   ACTIVE = 'ACTIVE',
   INACTIVE = 'INACTIVE',
-}
-
-export enum MemberRank {
-
 }
