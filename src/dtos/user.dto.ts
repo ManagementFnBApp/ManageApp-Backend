@@ -111,3 +111,24 @@ export class AssignRoleDto {
     @IsNotEmpty({ message: "role_id khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng" })
     role_id: number;
 }
+// DTO cho SHOPOWNER t?o user m?i (SHOPOWNER ho?c STAFF)
+export class CreateManagedUserDto {
+    @IsEmail({}, { message: "Email không h?p l?" })
+    @IsNotEmpty({ message: "Email không ðý?c ð? tr?ng" })
+    email: string;
+
+    @IsString()
+    @IsNotEmpty({ message: "Username không ðý?c ð? tr?ng" })
+    @MinLength(3, { message: "Username ph?i có ít nh?t 3 k? t?" })
+    username: string;
+
+    @IsString()
+    @IsNotEmpty({ message: "Password không ðý?c ð? tr?ng" })
+    @MinLength(6, { message: "Password ph?i có ít nh?t 6 k? t?" })
+    password: string;
+
+    @IsString()
+    @IsNotEmpty({ message: "role_code không ðý?c ð? tr?ng (SHOPOWNER ho?c STAFF)" })
+    role_code: string; // Ch? nh?n 'SHOPOWNER' ho?c 'STAFF'
+}
+

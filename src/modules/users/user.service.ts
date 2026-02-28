@@ -1,12 +1,14 @@
 import { Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
-import { CreateUserDto, UpdateUserDto, UserResponseDto, AssignRoleDto } from "../../dtos/user.dto";
+import { CreateUserDto, UpdateUserDto, UserResponseDto, AssignRoleDto, CreateManagedUserDto } from "../../dtos/user.dto";
+import { EmailService } from "../email/email.service";
 import * as bcrypt from 'bcrypt'
 
 @Injectable()
 export class UserService {
     constructor(
         private prisma: PrismaService,
+        private emailService: EmailService,
     ) { }
 
     async getAllUsers(): Promise<UserResponseDto[]> {
@@ -194,6 +196,91 @@ export class UserService {
         });
 
         return this.transformToDto(updatedUser);
+    }
+
+    // SHOPOWNER tạo user mới cho shop (SHOPOWNER hoặc STAFF)
+    async createManagedUser(shopOwnerId: number, dto: CreateManagedUserDto): Promise<UserResponseDto> {
+        // 1. Kiểm tra SHOPOWNER có tồn tại không
+        const shopOwner = await this.prisma.user.findUnique({
+            where: { id: shopOwnerId },
+            include: { role: true }
+        });
+
+        if (!shopOwner) {
+            throw new NotFoundException(`User với ID ${shopOwnerId} không tồn tại`);
+        }
+
+        // 2. Kiểm tra user gọi API phải là SHOPOWNER
+        if (shopOwner.role?.role_code !== 'SHOPOWNER') {
+            throw new BadRequestException('Chỉ có SHOPOWNER mới được phép tạo user cho shop');
+        }
+
+        // 3. Kiểm tra SHOPOWNER phải có shop_id
+        if (!shopOwner.shop_id) {
+            throw new BadRequestException('SHOPOWNER chưa có shop. Vui lòng đăng ký subscription trước.');
+        }
+
+        // 4. Validate role_code chỉ nhận SHOPOWNER hoặc STAFF
+        if (dto.role_code !== 'SHOPOWNER' && dto.role_code !== 'STAFF') {
+            throw new BadRequestException('role_code chỉ được phép là SHOPOWNER hoặc STAFF');
+        }
+
+        // 5. Kiểm tra role có tồn tại không
+        const role = await this.prisma.role.findUnique({
+            where: { role_code: dto.role_code }
+        });
+
+        if (!role) {
+            throw new BadRequestException(
+                `Role ${dto.role_code} chưa tồn tại. Vui lòng tạo role này trước khi sử dụng API này.`
+            );
+        }
+
+        // 6. Kiểm tra email/username đã tồn tại chưa
+        const existingUser = await this.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: dto.email },
+                    { username: dto.username }
+                ]
+            }
+        });
+
+        if (existingUser) {
+            throw new BadRequestException('Email hoặc username đã tồn tại');
+        }
+
+        // 7. Hash password
+        const salt = await bcrypt.genSalt();
+        const hashedPassword = await bcrypt.hash(dto.password, salt);
+
+        // 8. Tạo user mới với owner_manager_id và shop_id của SHOPOWNER
+        const newUser = await this.prisma.user.create({
+            data: {
+                email: dto.email,
+                username: dto.username,
+                password: hashedPassword,
+                role_id: role.id,
+                shop_id: shopOwner.shop_id, // Gán shop_id của SHOPOWNER
+                owner_manager_id: shopOwnerId, // Gán owner_manager_id là id của SHOPOWNER
+                is_active: true
+            },
+            include: {
+                role: true,
+                profile: true
+            }
+        });
+
+        // 9. Gửi email với username và password (plaintext password trước khi hash)
+        try {
+            await this.emailService.sendUserCredentials(dto.email, dto.username, dto.password);
+        } catch (error) {
+            console.error('Lỗi khi gửi email:', error);
+            // Không throw error để không block việc tạo user
+            // User đã được tạo thành công, chỉ email không gửi được
+        }
+
+        return this.transformToDto(newUser);
     }
 
     async findOrCreate(data: { email: string, fullName: string }): Promise<UserResponseDto> {
