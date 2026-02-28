@@ -1,12 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SubscriptionService } from './subscription.service';
+import { ShopSubscriptionService } from '../shop-subscriptions/shop-subscription.service';
 
 @Injectable()
 export class SubscriptionCronService {
   private readonly logger = new Logger(SubscriptionCronService.name);
 
-  constructor(private readonly subscriptionService: SubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: SubscriptionService,
+    private readonly shopSubscriptionService: ShopSubscriptionService,
+  ) {}
 
   // Chạy mỗi ngày lúc 00:00 (nửa đêm)
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
@@ -17,7 +21,7 @@ export class SubscriptionCronService {
     this.logger.log('Bắt đầu kiểm tra shop subscription đã hết hạn...');
 
     try {
-      const result = await this.subscriptionService.checkAndUpdateExpiredSubscriptions();
+      const result = await this.shopSubscriptionService.checkAndUpdateExpiredSubscriptions();
       this.logger.log(` ${result.message}`);
     } catch (error) {
       this.logger.error('Lỗi khi kiểm tra expired subscriptions:', error);
@@ -49,7 +53,7 @@ export class SubscriptionCronService {
     this.logger.log('🗑️  Bắt đầu xóa các shop chưa thanh toán sau 1 giờ...');
 
     try {
-      const result = await this.subscriptionService.deleteUnpaidShops();
+      const result = await this.shopSubscriptionService.deleteUnpaidShops();
       if (result.deleted > 0) {
         this.logger.log(`✅ ${result.message}`);
       }
