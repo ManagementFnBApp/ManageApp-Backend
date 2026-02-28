@@ -3,43 +3,39 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import {
   CreateSubscriptionPaymentDto,
   SubscriptionPaymentResponseDto,
-  CreateSubscriptionTenantDto,
+  CreateSubscriptionShopDto,
   ChangeSubscriptionDto,
-  SubscriptionTenantResponseDto,
+  SubscriptionShopResponseDto,
   CreateSubscriptionDto,
   UpdateSubscriptionDto,
   SubscriptionResponseDto,
 } from '../../dtos/subscription.dto';
-import { TenantService } from '../tenants/tenant.service';
 import { RoleService } from '../roles/role.service';
-import { AdminService } from '../admins/admin.service';
 
 @Injectable()
 export class SubscriptionService {
   constructor(
     private prisma: PrismaService,
-    private tenantService: TenantService,
     private roleService: RoleService,
-    private adminService: AdminService,
   ) { }
 
   // ==================== SUBSCRIPTION METHODS ====================
 
   async createSubscription(dto: CreateSubscriptionDto): Promise<SubscriptionResponseDto> {
     const existed = await this.prisma.subscription.findUnique({
-      where: { package_code: dto.packageCode },
+      where: { package_code: dto.package_code },
     });
 
     if (existed) {
-      throw new BadRequestException(`Package code ${dto.packageCode} đã tồn tại`);
+      throw new BadRequestException(`Package code ${dto.package_code} đã tồn tại`);
     }
 
     const subscription = await this.prisma.subscription.create({
       data: {
-        package_code: dto.packageCode,
+        package_code: dto.package_code,
         description: dto.description,
         price: dto.price,
-        billing_cycle: dto.billingCycle,
+        billing_cycle: dto.billing_cycle,
         features: dto.features,
       },
     });
@@ -58,7 +54,7 @@ export class SubscriptionService {
   async updateSubscription(id: number, dto: UpdateSubscriptionDto): Promise<SubscriptionResponseDto> {
     // Kiểm tra subscription có tồn tại không
     const existingSubscription = await this.prisma.subscription.findUnique({
-      where: { subscription_id: id },
+      where: { id: id },
     });
 
     if (!existingSubscription) {
@@ -66,26 +62,26 @@ export class SubscriptionService {
     }
 
     // Nếu update package_code, kiểm tra xem có trùng với subscription khác không
-    if (dto.packageCode && dto.packageCode !== existingSubscription.package_code) {
+    if (dto.package_code && dto.package_code !== existingSubscription.package_code) {
       const duplicatePackageCode = await this.prisma.subscription.findUnique({
-        where: { package_code: dto.packageCode },
+        where: { package_code: dto.package_code },
       });
 
       if (duplicatePackageCode) {
-        throw new BadRequestException(`Package code ${dto.packageCode} đã tồn tại`);
+        throw new BadRequestException(`Package code ${dto.package_code} đã tồn tại`);
       }
     }
 
     // Update subscription
     const updatedSubscription = await this.prisma.subscription.update({
-      where: { subscription_id: id },
+      where: { id: id },
       data: {
-        package_code: dto.packageCode,
+        package_code: dto.package_code,
         description: dto.description,
         price: dto.price,
-        billing_cycle: dto.billingCycle,
+        billing_cycle: dto.billing_cycle,
         features: dto.features,
-        is_active: dto.isActive,
+        is_active: dto.is_active,
       },
     });
 
@@ -95,10 +91,10 @@ export class SubscriptionService {
   async deleteSubscription(id: number): Promise<{ message: string }> {
     // Kiểm tra subscription có tồn tại không
     const existingSubscription = await this.prisma.subscription.findUnique({
-      where: { subscription_id: id },
+      where: { id: id },
       include: {
-        subscription_tenants: {
-          where: { is_expired: false }, // Chỉ check những tenant chưa hết hạn
+        shop_subscriptions: {
+          where: { is_expired: false }, // Chỉ check những shop chưa hết hạn
         },
       },
     });
@@ -107,17 +103,17 @@ export class SubscriptionService {
       throw new NotFoundException(`Subscription ID ${id} không tồn tại`);
     }
 
-    // Kiểm tra xem có subscription tenant nào chưa hết hạn không
-    if (existingSubscription.subscription_tenants.length > 0) {
+    // Kiểm tra xem có shop subscription nào chưa hết hạn không
+    if (existingSubscription.shop_subscriptions.length > 0) {
       throw new BadRequestException(
-        `Không thể xóa subscription này vì đang có ${existingSubscription.subscription_tenants.length} tenant chưa hết hạn đang sử dụng. Vui lòng chờ các tenant dùng hết hạn hoặc chuyển các tenant sang gói khác trước.`
+        `Không thể xóa subscription này vì đang có ${existingSubscription.shop_subscriptions.length} shop chưa hết hạn đang sử dụng. Vui lòng chờ các shop dùng hết hạn hoặc chuyển các shop sang gói khác trước.`
       );
     }
 
     // Soft delete: Set is_active = false và deleted_at = now
     // Hệ thống sẽ tự động xóa hoàn toàn sau 30 ngày (cần cronjob)
     await this.prisma.subscription.update({
-      where: { subscription_id: id },
+      where: { id: id },
       data: {
         is_active: false,
         deleted_at: new Date(),
@@ -125,38 +121,38 @@ export class SubscriptionService {
     });
 
     return {
-      message: `Subscription ID ${id} đã được đánh dấu xóa. Sẽ tự động xóa hoàn toàn sau 30 ngày nếu không có tenant nào sử dụng.`,
+      message: `Subscription ID ${id} đã được đánh dấu xóa. Sẽ tự động xóa hoàn toàn sau 30 ngày nếu không có shop nào sử dụng.`,
     };
   }
 
-  // ==================== SUBSCRIPTION TENANT METHODS ====================
+  // ==================== SHOP SUBSCRIPTION METHODS ====================
 
-  async createSubscriptionTenant(dto: CreateSubscriptionTenantDto, userId: number): Promise<SubscriptionTenantResponseDto> {
+  async createSubscriptionShop(dto: CreateSubscriptionShopDto, userId: number): Promise<SubscriptionShopResponseDto> {
     // Kiểm tra subscription có tồn tại không
     const subscription = await this.prisma.subscription.findUnique({
-      where: { subscription_id: dto.subscriptionId },
+      where: { id: dto.subscription_id },
     });
 
     if (!subscription) {
-      throw new BadRequestException(`Subscription ID ${dto.subscriptionId} không tồn tại`);
+      throw new BadRequestException(`Subscription ID ${dto.subscription_id} không tồn tại`);
     }
 
     // Kiểm tra user có tồn tại không
     const user = await this.prisma.user.findUnique({
-      where: { user_id: userId },
+      where: { id: userId },
     });
 
     if (!user) {
       throw new BadRequestException(`User ID ${userId} không tồn tại`);
     }
 
-    // VALIDATE: Kiểm tra xem user đã có subscription tenant nào đang active không
-    const existingActiveTenant = await this.prisma.subscriptionTenant.findFirst({
+    // VALIDATE: Kiểm tra xem user đã có shop subscription nào đang active không
+    const existingActiveShop = await this.prisma.shopSubscription.findFirst({
       where: {
-        tenant: {
+        shop: {
           users: {
             some: {
-              user_id: userId,
+              id: userId,
             },
           },
         },
@@ -164,34 +160,28 @@ export class SubscriptionService {
       },
     });
 
-    if (existingActiveTenant) {
+    if (existingActiveShop) {
       throw new BadRequestException(
-        `Bạn đã có subscription tenant đang active. Mỗi user chỉ được có 1 subscription tenant active. Sub Tenant ID của bạn: ${existingActiveTenant.sub_tenant_id}`
+        `Bạn đã có shop subscription đang active. Mỗi user chỉ được có 1 shop subscription active. Sub Shop ID của bạn: ${existingActiveShop.id}`
       );
     }
 
-    // Tạo tenant trước với is_active = false (sẽ được set true khi payment success)
-    const systemAdmin = await this.adminService.getOrCreateSystemAdmin();
-    const tenant = await this.tenantService.createTenant({
-      adminId: systemAdmin.adminId,
-      tenantName: dto.tenantName, // Sử dụng tên tenant user nhập
-      loyalPointPerUnit: 1,
-    });
-
-    // Set tenant is_active = false vì chưa thanh toán
-    await this.prisma.tenant.update({
-      where: { tenant_id: tenant.tenant_id },
-      data: { is_active: false },
+    // Tạo shop trước với is_active = false (sẽ được set true khi payment success)
+    const shop = await this.prisma.shop.create({
+      data: {
+        shop_name: dto.shop_name, // Sử dụng tên shop user nhập
+        is_active: false, // Chưa thanh toán
+      },
     });
 
     // Tính toán thời hạn dựa vào billing_cycle của subscription
     const startDate = new Date();
     const endDate = this.calculateEndDate(subscription.billing_cycle, startDate);
 
-    const subTenant = await this.prisma.subscriptionTenant.create({
+    const shopSubscription = await this.prisma.shopSubscription.create({
       data: {
-        subscription_id: dto.subscriptionId,
-        tenant_id: tenant.tenant_id,
+        subscription_id: dto.subscription_id,
+        shop_id: shop.id,
         number_of_renewals: 0,
         start_date: startDate,
         end_date: endDate,
@@ -202,13 +192,13 @@ export class SubscriptionService {
       },
     });
 
-    return this.transformSubscriptionTenantToDto(subTenant);
+    return this.transformShopSubscriptionToDto(shopSubscription);
   }
   // ==================== MAINTENANCE METHODS (for CronJob) ====================
 
   async checkAndUpdateExpiredSubscriptions(): Promise<{ updated: number; message: string }> {
-    // Tìm tất cả subscription tenant đã hết hạn nhưng chưa được đánh dấu
-    const expiredTenants = await this.prisma.subscriptionTenant.findMany({
+    // Tìm tất cả shop subscription đã hết hạn nhưng chưa được đánh dấu
+    const expiredShops = await this.prisma.shopSubscription.findMany({
       where: {
         is_expired: false,
         end_date: {
@@ -217,12 +207,12 @@ export class SubscriptionService {
       },
     });
 
-    // Update tất cả các tenant đã hết hạn
-    if (expiredTenants.length > 0) {
-      await this.prisma.subscriptionTenant.updateMany({
+    // Update tất cả các shop đã hết hạn
+    if (expiredShops.length > 0) {
+      await this.prisma.shopSubscription.updateMany({
         where: {
-          sub_tenant_id: {
-            in: expiredTenants.map((t) => t.sub_tenant_id),
+          id: {
+            in: expiredShops.map((s) => s.id),
           },
         },
         data: {
@@ -233,8 +223,8 @@ export class SubscriptionService {
 
 
     return {
-      updated: expiredTenants.length,
-      message: `Đã cập nhật ${expiredTenants.length} subscription tenant đã hết hạn`,
+      updated: expiredShops.length,
+      message: `Đã cập nhật ${expiredShops.length} shop subscription đã hết hạn`,
     };
   }
 
@@ -252,20 +242,20 @@ export class SubscriptionService {
         },
       },
       include: {
-        subscription_tenants: true,
+        shop_subscriptions: true,
       },
     });
 
-    // Chỉ xóa những subscription không còn tenant nào sử dụng
+    // Chỉ xóa những subscription không còn shop nào sử dụng
     const safeToDelete = subscriptionsToDelete.filter(
-      (sub) => sub.subscription_tenants.length === 0
+      (sub) => sub.shop_subscriptions.length === 0
     );
 
     if (safeToDelete.length > 0) {
       await this.prisma.subscription.deleteMany({
         where: {
-          subscription_id: {
-            in: safeToDelete.map((s) => s.subscription_id),
+          id: {
+            in: safeToDelete.map((s) => s.id),
           },
         },
       });
@@ -277,104 +267,104 @@ export class SubscriptionService {
     };
   }
 
-  async deleteUnpaidTenants(): Promise<{ deleted: number; message: string }> {
-    // Tìm các subscription tenant được tạo hơn 1 giờ trước và chưa có payment success
+  async deleteUnpaidShops(): Promise<{ deleted: number; message: string }> {
+    // Tìm các shop subscription được tạo hơn 1 giờ trước và chưa có payment success
     const oneHourAgo = new Date();
     oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
-    // Tìm các subscription tenant có tenant is_active = false và được tạo hơn 1 giờ trước
-    const unpaidSubTenants = await this.prisma.subscriptionTenant.findMany({
+    // Tìm các shop subscription có shop is_active = false và được tạo hơn 1 giờ trước
+    const unpaidShopSubscriptions = await this.prisma.shopSubscription.findMany({
       where: {
         created_at: {
           lte: oneHourAgo, // created_at <= 1 hour ago
         },
-        tenant: {
-          is_active: false, // Tenant chưa được kích hoạt
+        shop: {
+          is_active: false, // Shop chưa được kích hoạt
         },
       },
       include: {
         subscription_payments: true,
-        tenant: true,
+        shop: true,
       },
     });
 
-    // Filter ra các tenant không có payment success
-    const tenantsToDelete = unpaidSubTenants.filter(
-      (subTenant) => !subTenant.subscription_payments.some(
+    // Filter ra các shop không có payment success
+    const shopsToDelete = unpaidShopSubscriptions.filter(
+      (shopSub) => !shopSub.subscription_payments.some(
         (payment) => payment.payment_status === 'success'
       )
     );
 
     let deletedCount = 0;
 
-    // Xóa từng tenant và subscription tenant
-    for (const subTenant of tenantsToDelete) {
+    // Xóa từng shop và shop subscription
+    for (const shopSub of shopsToDelete) {
       try {
         // 1. Xóa các payment liên quan (nếu có)
         await this.prisma.subscriptionPayment.deleteMany({
-          where: { sub_tenant_id: subTenant.sub_tenant_id },
+          where: { sub_shop_id: shopSub.id },
         });
 
-        // 2. Xóa subscription tenant
-        await this.prisma.subscriptionTenant.delete({
-          where: { sub_tenant_id: subTenant.sub_tenant_id },
+        // 2. Xóa shop subscription
+        await this.prisma.shopSubscription.delete({
+          where: { id: shopSub.id },
         });
 
-        // 3. Xóa tenant
-        await this.prisma.tenant.delete({
-          where: { tenant_id: subTenant.tenant_id },
+        // 3. Xóa shop
+        await this.prisma.shop.delete({
+          where: { id: shopSub.shop_id },
         });
 
         deletedCount++;
       } catch (error) {
-        // Log lỗi nhưng tiếp tục xóa các tenant khác
-        console.error(`Lỗi khi xóa tenant ${subTenant.tenant_id}:`, error);
+        // Log lỗi nhưng tiếp tục xóa các shop khác
+        console.error(`Lỗi khi xóa shop ${shopSub.shop_id}:`, error);
       }
     }
 
     return {
       deleted: deletedCount,
-      message: `Đã xóa ${deletedCount} tenant chưa thanh toán sau 1 giờ`,
+      message: `Đã xóa ${deletedCount} shop chưa thanh toán sau 1 giờ`,
     };
   }
 
   // ==================== SUBSCRIPTION PAYMENT METHODS ====================
 
   async createSubscriptionPayment(dto: CreateSubscriptionPaymentDto, userId: number): Promise<SubscriptionPaymentResponseDto> {
-    // Kiểm tra subscription tenant có tồn tại không
-    const subTenant = await this.prisma.subscriptionTenant.findUnique({
-      where: { sub_tenant_id: dto.subTenantId },
+    // Kiểm tra shop subscription có tồn tại không
+    const shopSubscription = await this.prisma.shopSubscription.findUnique({
+      where: { id: dto.sub_shop_id },
       include: {
-        tenant: true,
+        shop: true,
         subscription: true, // Include subscription để validate price
       },
     });
 
-    if (!subTenant) {
-      throw new BadRequestException(`Subscription tenant ID ${dto.subTenantId} không tồn tại`);
+    if (!shopSubscription) {
+      throw new BadRequestException(`Shop subscription ID ${dto.sub_shop_id} không tồn tại`);
     }
 
     // VALIDATE: Kiểm tra amount phải bằng với price của subscription
-    const subscriptionPrice = parseFloat(subTenant.subscription.price.toString());
+    const subscriptionPrice = parseFloat(shopSubscription.subscription.price.toString());
     if (dto.amount !== subscriptionPrice) {
       throw new BadRequestException(
-        `Số tiền thanh toán không đúng. Amount phải bằng ${subscriptionPrice} (giá gói ${subTenant.subscription.package_code}).`
+        `Số tiền thanh toán không đúng. Amount phải bằng ${subscriptionPrice} (giá gói ${shopSubscription.subscription.package_code}).`
       );
     }
 
     // Kiểm tra user có tồn tại không
     const user = await this.prisma.user.findUnique({
-      where: { user_id: userId },
+      where: { id: userId },
     });
 
     if (!user) {
       throw new BadRequestException(`User ID ${userId} không tồn tại`);
     }
 
-    // VALIDATE: Kiểm tra xem đã có payment thành công cho subscription tenant này chưa
+    // VALIDATE: Kiểm tra xem đã có payment thành công cho shop subscription này chưa
     const existingSuccessPayment = await this.prisma.subscriptionPayment.findFirst({
       where: {
-        sub_tenant_id: dto.subTenantId,
+        sub_shop_id: dto.sub_shop_id,
         payment_status: 'success',
       },
     });
@@ -382,28 +372,28 @@ export class SubscriptionService {
     // Nếu đã có payment thành công, không cho tạo payment mới
     if (existingSuccessPayment) {
       throw new BadRequestException(
-        `Subscription tenant này đã được kích hoạt. Không thể tạo payment mới.`
+        `Shop subscription này đã được kích hoạt. Không thể tạo payment mới.`
       );
     }
 
     // Tạo payment record với status mặc định là 'pending'
     const payment = await this.prisma.subscriptionPayment.create({
       data: {
-        sub_tenant_id: dto.subTenantId,
+        sub_shop_id: dto.sub_shop_id,
         method: dto.method,
         amount: dto.amount,
         payment_status: 'pending', // Luôn tự động là pending khi tạo mới
       },
       include: {
-        subscription_tenant: {
+        shop_subscription: {
           include: {
-            tenant: true,
+            shop: true,
           },
         },
       },
     });
 
-    // Payment mới tạo luôn là 'pending', không tự động assign tenant/role
+    // Payment mới tạo luôn là 'pending', không tự động assign shop/role
     // Chỉ khi update status thành 'success' thì mới assign
 
     return this.transformPaymentToDto(payment, user);
@@ -414,11 +404,11 @@ export class SubscriptionService {
   ): Promise<SubscriptionPaymentResponseDto> {
     // Kiểm tra payment có tồn tại không
     const payment = await this.prisma.subscriptionPayment.findUnique({
-      where: { sub_payment_id: paymentId },
+      where: { id: paymentId },
       include: {
-        subscription_tenant: {
+        shop_subscription: {
           include: {
-            tenant: true,
+            shop: true,
             subscription: true,
           },
         },
@@ -438,25 +428,25 @@ export class SubscriptionService {
 
     // Tự động update payment status thành 'success'
     const updatedPayment = await this.prisma.subscriptionPayment.update({
-      where: { sub_payment_id: paymentId },
+      where: { id: paymentId },
       data: { payment_status: 'success' },
       include: {
-        subscription_tenant: {
+        shop_subscription: {
           include: {
-            tenant: true,
+            shop: true,
           },
         },
       },
     });
 
-    // Xử lý logic assign tenant và role khi payment success
-    // Tìm user dựa trên tenant
+    // Xử lý logic assign shop và role khi payment success
+    // Tìm user dựa trên shop
     const users = await this.prisma.user.findMany({
-      where: { tenant_id: payment.subscription_tenant.tenant_id },
+      where: { shop_id: payment.shop_subscription.shop_id },
     });
 
     if (users.length > 0) {
-      await this.processSuccessfulPayment(paymentId, users[0].user_id);
+      await this.processSuccessfulPayment(paymentId, users[0].id);
     }
 
     return this.transformPaymentToDto(updatedPayment, null);
@@ -467,11 +457,11 @@ export class SubscriptionService {
   private async processSuccessfulPayment(paymentId: number, userId: number): Promise<void> {
     // Lấy payment details
     const payment = await this.prisma.subscriptionPayment.findUnique({
-      where: { sub_payment_id: paymentId },
+      where: { id: paymentId },
       include: {
-        subscription_tenant: {
+        shop_subscription: {
           include: {
-            tenant: true,
+            shop: true,
             subscription: true,
           },
         },
@@ -484,7 +474,7 @@ export class SubscriptionService {
 
     // Lấy user
     const user = await this.prisma.user.findUnique({
-      where: { user_id: userId },
+      where: { id: userId },
       include: { role: true },
     });
 
@@ -499,25 +489,25 @@ export class SubscriptionService {
     } catch (error) {
       // Nếu role chưa tồn tại, tạo mới
       shopOwnerRole = await this.roleService.createRole({
-        roleCode: 'SHOPOWNER',
+        role_code: 'SHOPOWNER',
         description: 'Shop Owner - Quản lý cửa hàng',
         permissions: null,
       });
     }
 
-    // 2. Update user với tenant_id và role_id
+    // 2. Update user với shop_id và role_id
     await this.prisma.user.update({
-      where: { user_id: userId },
+      where: { id: userId },
       data: {
-        tenant_id: payment.subscription_tenant.tenant_id,
-        role_id: shopOwnerRole.roleId,
+        shop_id: payment.shop_subscription.shop_id,
+        role_id: shopOwnerRole.role_id,
         owner_manager_id: null, // Là SHOPOWNER gốc
       },
     });
 
-    // 3. Set tenant is_active = true vì đã thanh toán thành công
-    await this.prisma.tenant.update({
-      where: { tenant_id: payment.subscription_tenant.tenant_id },
+    // 3. Set shop is_active = true vì đã thanh toán thành công
+    await this.prisma.shop.update({
+      where: { id: payment.shop_subscription.shop_id },
       data: { is_active: true },
     });
 
@@ -551,7 +541,7 @@ export class SubscriptionService {
   // Transform helpers
   private transformSubscriptionToDto(subscription: any): SubscriptionResponseDto {
     return {
-      subscription_id: subscription.subscription_id,
+      subscription_id: subscription.id,
       package_code: subscription.package_code,
       description: subscription.description,
       price: parseFloat(subscription.price),
@@ -564,22 +554,22 @@ export class SubscriptionService {
     };
   }
 
-  private transformSubscriptionTenantToDto(subTenant: any): SubscriptionTenantResponseDto {
+  private transformShopSubscriptionToDto(shopSub: any): SubscriptionShopResponseDto {
     return {
-      sub_tenant_id: subTenant.sub_tenant_id,
-      subscription_id: subTenant.subscription_id,
-      tenant_id: subTenant.tenant_id,
-      number_of_renewals: subTenant.number_of_renewals,
-      start_date: subTenant.start_date,
-      end_date: subTenant.end_date,
-      created_at: subTenant.created_at,
-      updated_at: subTenant.updated_at,
-      is_expired: subTenant.is_expired,
-      subscription: subTenant.subscription
+      sub_shop_id: shopSub.id,
+      subscription_id: shopSub.subscription_id,
+      shop_id: shopSub.shop_id,
+      number_of_renewals: shopSub.number_of_renewals,
+      start_date: shopSub.start_date,
+      end_date: shopSub.end_date,
+      created_at: shopSub.created_at,
+      updated_at: shopSub.updated_at,
+      is_expired: shopSub.is_expired,
+      subscription: shopSub.subscription
         ? {
-          package_code: subTenant.subscription.package_code,
-          price: parseFloat(subTenant.subscription.price),
-          billing_cycle: subTenant.subscription.billing_cycle,
+          package_code: shopSub.subscription.package_code,
+          price: parseFloat(shopSub.subscription.price),
+          billing_cycle: shopSub.subscription.billing_cycle,
         }
         : undefined,
     };
@@ -587,21 +577,21 @@ export class SubscriptionService {
 
   private transformPaymentToDto(payment: any, user: any): SubscriptionPaymentResponseDto {
     return {
-      sub_payment_id: payment.sub_payment_id,
-      sub_tenant_id: payment.sub_tenant_id,
+      sub_payment_id: payment.id,
+      sub_shop_id: payment.sub_shop_id,
       method: payment.method,
       amount: parseFloat(payment.amount),
       created_at: payment.created_at,
       payment_status: payment.payment_status,
-      tenant: payment.subscription_tenant?.tenant
+      shop: payment.shop_subscription?.shop
         ? {
-          tenant_id: payment.subscription_tenant.tenant.tenant_id,
-          tenant_name: payment.subscription_tenant.tenant.tenant_name,
+          shop_id: payment.shop_subscription.shop.id,
+          shop_name: payment.shop_subscription.shop.shop_name,
         }
         : undefined,
       user: user
         ? {
-          user_id: user.user_id,
+          user_id: user.id,
           username: user.username,
           role: user.role?.role_code || null,
         }

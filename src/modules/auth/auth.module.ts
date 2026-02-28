@@ -3,9 +3,7 @@ import { ApiTags } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { UserModule } from "../users/user.module";
-import { TenantModule } from "../tenants/tenant.module";
 import { RoleModule } from "../roles/role.module";
-import { AdminModule } from "../admins/admin.module";
 import { ConfigModule } from "@nestjs/config";
 import googleOauthConfig from "src/config/google-oauth.config";
 
@@ -15,9 +13,7 @@ import googleOauthConfig from "src/config/google-oauth.config";
         ConfigModule,
         ConfigModule.forFeature(googleOauthConfig),
         UserModule, 
-        TenantModule, 
-        RoleModule, 
-        AdminModule,
+        RoleModule,
     ],
     providers: [AuthService],
     controllers: [AuthController],

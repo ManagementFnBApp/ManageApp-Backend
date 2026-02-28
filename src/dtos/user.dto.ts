@@ -14,19 +14,18 @@ export class ProfileResponseDto {
 // Response DTO - dùng để trả về dữ liệu user
 export class UserResponseDto {
     user_id: number;
-    tenantId: number;
-    shopId?: number | null;
-    ownerManagerId?: number | null;
-    roleId: number;
+    shop_id?: number | null;
+    owner_manager_id?: number | null;
+    role_id?: number | null;
     email: string;
     username: string;
     @Exclude()
     password: string;
-    isActive: boolean;
-    lastLogin?: Date | null;
-    role: string; // role_code từ relation
-    createdAt: Date;
-    updatedAt: Date;
+    is_active: boolean;
+    last_login?: Date | null;
+    role: string | null; // role_code từ relation
+    created_at: Date;
+    updated_at: Date;
     profile?: ProfileResponseDto | null;
 }
 
@@ -34,19 +33,15 @@ export class UserResponseDto {
 export class CreateUserDto {
     @IsInt()
     @IsOptional()
-    tenantId?: number;
+    shop_id?: number;
 
     @IsInt()
     @IsOptional()
-    shopId?: number;
-
-    @IsInt()
-    @IsOptional()
-    ownerManagerId?: number;
+    owner_manager_id?: number;
 
     @IsString()
     @IsOptional()
-    roleCode?: string;
+    role_code?: string;
 
     @IsEmail({}, { message: "Email không hợp lệ" })
     @IsNotEmpty({ message: "Email không được để trống" })
@@ -76,7 +71,7 @@ export class UpdateUserDto {
 
     @IsString()
     @IsOptional()
-    fullName?: string;
+    full_name?: string;
 
     @IsString()
     @IsOptional()
@@ -88,15 +83,15 @@ export class UpdateUserDto {
 
     @IsInt()
     @IsOptional()
-    shopId?: number;
+    shop_id?: number;
 
     @IsInt()
     @IsOptional()
-    roleId?: number;
+    role_id?: number;
 
     @IsBoolean()
     @IsOptional()
-    isActive?: boolean;
+    is_active?: boolean;
 }
 
 // DTO cho việc đổi mật khẩu
@@ -109,4 +104,10 @@ export class ChangePasswordDto {
     @IsNotEmpty({ message: "Mật khẩu mới không được để trống" })
     @MinLength(6, { message: "Mật khẩu mới phải có ít nhất 6 ký tự" })
     newPassword: string;
+}
+// DTO cho việc assign role cho user
+export class AssignRoleDto {
+    @IsInt({ message: "role_id phải là số nguyên" })
+    @IsNotEmpty({ message: "role_id không được để trống" })
+    role_id: number;
 }

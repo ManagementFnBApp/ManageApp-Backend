@@ -2,22 +2,22 @@ import { IsString, IsNotEmpty, IsOptional, IsInt, IsBoolean, Min } from 'class-v
 import { Exclude, Expose } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class TenantResponseDto {
+export class ShopResponseDto {
   @ApiProperty()
   @Expose()
-  tenant_id: number;
+  shop_id: number;
 
   @ApiProperty()
   @Expose()
-  admin_id: number;
-
-  @ApiProperty()
-  @Expose()
-  tenant_name: string;
+  shop_name: string;
 
   @ApiPropertyOptional()
   @Expose()
-  loyal_point_per_unit?: number;
+  address?: string;
+
+  @ApiPropertyOptional()
+  @Expose()
+  phone?: string;
 
   @ApiProperty()
   @Expose()
@@ -31,40 +31,43 @@ export class TenantResponseDto {
   @Expose()
   update_at: Date;
 
-  constructor(partial: Partial<TenantResponseDto>) {
+  constructor(partial: Partial<ShopResponseDto>) {
     Object.assign(this, partial);
   }
 }
 
-export class CreateTenantDto {
-  @ApiProperty({ example: 1 })
-  @IsInt()
-  @IsNotEmpty()
-  adminId: number;
-
+export class CreateShopDto {
   @ApiProperty({ example: 'My Shop' })
   @IsString()
   @IsNotEmpty()
-  tenantName: string;
+  shopName: string;
 
-  @ApiPropertyOptional({ example: 100 })
+  @ApiPropertyOptional({ example: '123 Main St' })
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  loyalPointPerUnit?: number;
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({ example: '0123456789' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 }
 
-export class UpdateTenantDto {
+export class UpdateShopDto {
   @ApiPropertyOptional({ example: 'My Updated Shop' })
   @IsOptional()
   @IsString()
-  tenantName?: string;
+  shopName?: string;
 
-  @ApiPropertyOptional({ example: 150 })
+  @ApiPropertyOptional({ example: '456 New St' })
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  loyalPointPerUnit?: number;
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({ example: '0987654321' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

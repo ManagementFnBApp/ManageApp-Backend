@@ -6,8 +6,8 @@ import {
   CreateSubscriptionDto,
   UpdateSubscriptionDto,
   SubscriptionResponseDto,
-  CreateSubscriptionTenantDto,
-  SubscriptionTenantResponseDto,
+  CreateSubscriptionShopDto,
+  SubscriptionShopResponseDto,
   CreateSubscriptionPaymentDto,
   SubscriptionPaymentResponseDto,
 } from '../../dtos/subscription.dto';
@@ -19,17 +19,19 @@ export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
   // ==================== SUBSCRIPTION ENDPOINTS ====================
+  // Chỉ ADMIN mới được tạo/sửa/xóa subscription packages
 
   @Post()
-  @AdminOnly()
+  @AdminOnly() // Cần role ADMIN
   @ApiOperation({ summary: 'Tạo gói subscription mới (Chỉ Admin)' })
   @ApiResponse({ status: 201, description: 'Tạo subscription thành công' })
+  @ApiResponse({ status: 403, description: 'Không có quyền ADMIN' })
   async createSubscription(@Body() dto: CreateSubscriptionDto): Promise<SubscriptionResponseDto> {
     return this.subscriptionService.createSubscription(dto);
   }
 
   @Get()
-  @Public()
+  @Public() // Không cần login - public cho mọi người xem
   @ApiOperation({ summary: 'Lấy tất cả các gói subscription (Public)' })
   @ApiResponse({ status: 200, description: 'Danh sách subscriptions' })
   async getAllSubscriptions(): Promise<SubscriptionResponseDto[]> {
@@ -37,9 +39,10 @@ export class SubscriptionController {
   }
 
   @Put(':id')
-  @AdminOnly()
+  @AdminOnly() // Cần role ADMIN
   @ApiOperation({ summary: 'Cập nhật gói subscription (Chỉ Admin)' })
   @ApiResponse({ status: 200, description: 'Cập nhật subscription thành công' })
+  @ApiResponse({ status: 403, description: 'Không có quyền ADMIN' })
   @ApiResponse({ status: 404, description: 'Subscription không tồn tại' })
   async updateSubscription(
     @Param('id', ParseIntPipe) id: number,
@@ -49,28 +52,31 @@ export class SubscriptionController {
   }
 
   @Delete(':id')
-  @AdminOnly()
+  @AdminOnly() // Cần role ADMIN
   @ApiOperation({ summary: 'Xóa gói subscription (Chỉ Admin)' })
   @ApiResponse({ status: 200, description: 'Xóa subscription thành công' })
-  @ApiResponse({ status: 400, description: 'Không thể xóa vì đang có tenant sử dụng' })
+  @ApiResponse({ status: 400, description: 'Không thể xóa vì đang có shop sử dụng' })
+  @ApiResponse({ status: 403, description: 'Không có quyền ADMIN' })
   @ApiResponse({ status: 404, description: 'Subscription không tồn tại' })
   async deleteSubscription(@Param('id', ParseIntPipe) id: number): Promise<{ message: string }> {
     return this.subscriptionService.deleteSubscription(id);
   }
 
-  // ==================== SUBSCRIPTION TENANT ENDPOINTS ====================
+  // ==================== SHOP SUBSCRIPTION ENDPOINTS ====================
+  // User đã login có thể đăng ký gói subscription
 
-  @Post('tenants')
+  @Post('shops')
+  // Không có @Public() => Cần login (AuthGuard check JWT)
   @ApiOperation({ 
-    summary: 'Tạo subscription tenant (đăng ký gói cho user) - Yêu cầu login',
-    description: 'Tạo subscription tenant khi user chọn gói. Response sẽ bao gồm thông tin price để user biết số tiền cần thanh toán ở bước tiếp theo.'
+    summary: 'Đăng ký gói subscription (Tạo shop) - Cần login',
+    description: 'User đã login chọn gói subscription và đặt tên shop. Response trả về thông tin price để thanh toán ở bước tiếp theo.'
   })
-  @ApiResponse({ status: 201, description: 'Tạo subscription tenant thành công. Response bao gồm subscription info với price.' })
+  @ApiResponse({ status: 201, description: 'Tạo shop subscription thành công' })
   @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
-  async createSubscriptionTenant(
-    @Body() dto: CreateSubscriptionTenantDto,
+  async createSubscriptionShop(
+    @Body() dto: CreateSubscriptionShopDto,
     @Request() req: any,
-  ): Promise<SubscriptionTenantResponseDto> {
+  ): Promise<SubscriptionShopResponseDto> {
     const userId = req.user?.sub || req.user?.userId; // Thử cả sub và userId
     console.log('User từ token:', req.user);
     console.log('UserId:', userId);
@@ -79,15 +85,17 @@ export class SubscriptionController {
       throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
     }
     
-    return this.subscriptionService.createSubscriptionTenant(dto, userId);
+    return this.subscriptionService.createSubscriptionShop(dto, userId);
   }
 
   // ==================== SUBSCRIPTION PAYMENT ENDPOINTS ====================
+  // User đã login có thể tạo payment và confirm payment
 
   @Post('payments')
+  // Không có @Public() => Cần login (AuthGuard check JWT)
   @ApiOperation({ 
-    summary: 'Tạo payment cho subscription - Yêu cầu login',
-    description: 'Tạo payment cho subscription tenant với status tự động là "pending". LƯU Ý: Amount PHẢI BẰNG với price của subscription package. Để kích hoạt tenant và assign role, cần update payment status thành "success" sau khi thanh toán thành công.'
+    summary: 'Tạo payment cho subscription - Cần login',
+    description: 'Tạo payment cho shop subscription với status tự động là "pending". Amount PHẢI BẰNG với price của subscription package. Để kích hoạt shop và assign role SHOPOWNER, cần confirm payment ở endpoint tiếp theo.'
   })
   @ApiResponse({ status: 201, description: 'Tạo payment thành công' })
   @ApiResponse({ status: 400, description: 'Amount không khớp với price của subscription' })
@@ -108,11 +116,12 @@ export class SubscriptionController {
   }
 
   @Put('payments/:id/status')
+  // Không có @Public() => Cần login (AuthGuard check JWT)
   @ApiOperation({ 
-    summary: 'Confirm thanh toán thành công - Yêu cầu login',
-    description: 'Tự động update payment status từ "pending" thành "success". Hệ thống sẽ tự động kích hoạt tenant (is_active = true) và assign role SHOPOWNER cho user. Không cần body request.'
+    summary: 'Confirm thanh toán thành công - Cần login',
+    description: 'Tự động update payment status từ "pending" thành "success". Hệ thống sẽ tự động:\n1. Kích hoạt shop (is_active = true)\n2. Gán role SHOPOWNER cho user\n3. Gán shop_id cho user\n\nKhông cần body request.'
   })
-  @ApiResponse({ status: 200, description: 'Confirm payment thành công' })
+  @ApiResponse({ status: 200, description: 'Confirm payment thành công. User đã được gán role SHOPOWNER.' })
   @ApiResponse({ status: 400, description: 'Payment không ở trạng thái pending' })
   @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
   @ApiResponse({ status: 404, description: 'Payment không tồn tại' })
@@ -127,8 +136,8 @@ export class SubscriptionController {
   @Post('maintenance/check-expired')
   @AdminOnly()
   @ApiOperation({ 
-    summary: 'Kiểm tra và cập nhật các subscription tenant đã hết hạn (Admin hoặc CronJob)',
-    description: 'Tự động set is_expired = true cho các tenant có end_date <= now'
+    summary: 'Kiểm tra và cập nhật các shop subscription đã hết hạn (Admin hoặc CronJob)',
+    description: 'Tự động set is_expired = true cho các shop có end_date <= now'
   })
   @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
   async checkExpiredSubscriptions(): Promise<{ updated: number; message: string }> {

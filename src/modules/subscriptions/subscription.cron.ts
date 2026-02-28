@@ -14,7 +14,7 @@ export class SubscriptionCronService {
     timeZone: 'Asia/Ho_Chi_Minh', // Múi giờ Việt Nam
   })
   async handleCheckExpiredSubscriptions() {
-    this.logger.log('Bắt đầu kiểm tra subscription tenant đã hết hạn...');
+    this.logger.log('Bắt đầu kiểm tra shop subscription đã hết hạn...');
 
     try {
       const result = await this.subscriptionService.checkAndUpdateExpiredSubscriptions();
@@ -40,21 +40,21 @@ export class SubscriptionCronService {
     }
   }
 
-  // Chạy mỗi giờ để xóa các tenant chưa thanh toán sau 1 giờ
+  // Chạy mỗi giờ để xóa các shop chưa thanh toán sau 1 giờ
   @Cron(CronExpression.EVERY_HOUR, {
-    name: 'delete-unpaid-tenants',
+    name: 'delete-unpaid-shops',
     timeZone: 'Asia/Ho_Chi_Minh',
   })
-  async handleDeleteUnpaidTenants() {
-    this.logger.log('🗑️  Bắt đầu xóa các tenant chưa thanh toán sau 1 giờ...');
+  async handleDeleteUnpaidShops() {
+    this.logger.log('🗑️  Bắt đầu xóa các shop chưa thanh toán sau 1 giờ...');
 
     try {
-      const result = await this.subscriptionService.deleteUnpaidTenants();
+      const result = await this.subscriptionService.deleteUnpaidShops();
       if (result.deleted > 0) {
         this.logger.log(`✅ ${result.message}`);
       }
     } catch (error) {
-      this.logger.error('❌ Lỗi khi xóa unpaid tenants:', error);
+      this.logger.error('❌ Lỗi khi xóa unpaid shops:', error);
     }
   }
 
