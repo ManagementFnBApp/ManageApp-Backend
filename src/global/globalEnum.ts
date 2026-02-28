@@ -11,7 +11,7 @@ export enum HttpMessage {
 
 export enum Role {
   ADMIN = 'ADMIN',
-  SHOP_OWNER = 'SHOP_OWNER',
+  SHOPOWNER = 'SHOPOWNER',
   STAFF = 'STAFF',
 }
 

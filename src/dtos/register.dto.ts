@@ -3,10 +3,6 @@ import { IsEmail, IsNotEmpty, MinLength, IsOptional, IsString, IsInt } from "cla
 export class RegisterDto {
   @IsInt()
   @IsOptional()
-  tenantId?: number;
-
-  @IsInt()
-  @IsOptional()
   shopId?: number;
 
   @IsInt()

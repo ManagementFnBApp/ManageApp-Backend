@@ -17,7 +17,7 @@ datasource db {
 // ========================================
 
 model Role {
-  id     Int     @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   role_code   String  @unique
   description String?
   permissions Json?
@@ -28,7 +28,7 @@ model Role {
 }
 
 model User {
-  id          Int       @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
   shop_id          Int?
   owner_manager_id Int? // ID of the owner who manages this user (for shop owners/managers)
   role_id          Int?
@@ -40,8 +40,8 @@ model User {
   created_at       DateTime  @default(now())
   updated_at       DateTime  @updatedAt
 
-  shop   Shop?   @relation(fields: [shop_id], references: [id])
-  role   Role?   @relation(fields: [role_id], references: [id])
+  shop Shop? @relation(fields: [shop_id], references: [id])
+  role Role? @relation(fields: [role_id], references: [id])
 
   // Self-reference for owner hierarchy
   owner         User?  @relation("UserOwner", fields: [owner_manager_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -62,7 +62,7 @@ model User {
 }
 
 model Profile {
-  id String   @id @default(uuid())
+  id         String   @id @default(uuid())
   user_id    Int      @unique
   full_name  String
   avatar     String?
@@ -80,7 +80,7 @@ model Profile {
 // ========================================
 
 model Shop {
-  id    Int      @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   shop_name  String
   address    String?
   phone      String?
@@ -88,26 +88,26 @@ model Shop {
   created_at DateTime @default(now())
   update_at  DateTime @updatedAt
 
-  users        User[]
-  customers            Customer[]
-  inventories  Inventory[]
-  shifts       Shift[]
-  merchandises Merchandise[]
-  shop_categories ShopCategory[]
-  shop_subcriptions ShopSubscription[]
+  users              User[]
+  customers          Customer[]
+  inventories        Inventory[]
+  shifts             Shift[]
+  merchandises       Merchandise[]
+  shop_categories    ShopCategory[]
+  shop_subscriptions ShopSubscription[]
 
   @@map("shops")
 }
 
 model Shift {
-  id     Int       @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   shop_id      Int
   start_time   DateTime
   end_time     DateTime?
   shift_status String?
 
-  shop           Shop           @relation(fields: [shop_id], references: [id])
-  orders         Orders[]
+  shop         Shop         @relation(fields: [shop_id], references: [id])
+  orders       Orders[]
   shift_staffs ShiftStaff[]
 
   @@map("shifts")
@@ -115,7 +115,7 @@ model Shift {
 
 model ShiftStaff {
   shift_id Int
-  user_id  Int 
+  user_id  Int
 
   shift Shift @relation(fields: [shift_id], references: [id])
   user  User  @relation("ShiftUsers", fields: [user_id], references: [id])
@@ -129,14 +129,14 @@ model ShiftStaff {
 // ========================================
 
 model Customer {
-  id   Int      @id @default(autoincrement())
-  shop_id     Int
+  id            Int      @id @default(autoincrement())
+  shop_id       Int
   phone         String
   full_name     String?
   loyalty_point Int?     @default(0)
   created_at    DateTime @default(now())
 
-  shop                  Shop                  @relation(fields: [shop_id], references: [id])
+  shop                    Shop                    @relation(fields: [shop_id], references: [id])
   orders                  Orders[]
   merchandise_redemptions MerchandiseRedemption[]
 
@@ -148,32 +148,32 @@ model Customer {
 // ========================================
 
 model Category {
-  id     Int     @id @default(autoincrement())
-  category_name   String
-  is_active       Boolean @default(true)
+  id            Int     @id @default(autoincrement())
+  category_name String
+  is_active     Boolean @default(true)
 
-  shop_category   ShopCategory[] 
-  products Product[]
+  shop_category ShopCategory[]
+  products      Product[]
 
   @@map("categories")
 }
 
 model ShopCategory {
-  shop_id Int 
+  shop_id     Int
   category_id Int
 
-  shop Shop   @relation(fields: [shop_id], references: [id])
-  category    Category @relation(fields: [category_id], references: [id])
+  shop     Shop     @relation(fields: [shop_id], references: [id])
+  category Category @relation(fields: [category_id], references: [id])
 
   @@id([shop_id, category_id])
 }
 
 model Product {
-  id   Int      @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   category_id  Int
   product_name String
   sku          String   @unique
-  barcode      String? 
+  barcode      String?
   description  String?
   measure_unit String?
   import_price Decimal  @db.Decimal(10, 2)
@@ -182,7 +182,7 @@ model Product {
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
 
-  category        Category @relation(fields: [category_id], references: [id])
+  category        Category        @relation(fields: [category_id], references: [id])
   inventory_items InventoryItem[]
   order_items     OrderItem[]
 
@@ -190,7 +190,7 @@ model Product {
 }
 
 model Inventory {
-  id      Int       @id @default(autoincrement())
+  id                Int       @id @default(autoincrement())
   shop_id           Int
   current_quantity  Int       @default(0)
   minimum_threshold Int?
@@ -205,7 +205,7 @@ model Inventory {
 }
 
 model InventoryItem {
-  id Int      @id @default(autoincrement())
+  id                Int      @id @default(autoincrement())
   product_id        Int
   inventory_id      Int
   quantity          Int      @default(0)
@@ -220,7 +220,7 @@ model InventoryItem {
 }
 
 model InventoryTrait {
-  id      Int      @id @default(autoincrement())
+  id                Int      @id @default(autoincrement())
   inventory_item_id Int
   created_by        Int // User who created this trait/transaction
   inv_trait_type    String
@@ -241,7 +241,7 @@ model InventoryTrait {
 // ========================================
 
 model Merchandise {
-  id   Int      @id @default(autoincrement())
+  id               Int      @id @default(autoincrement())
   shop_id          Int
   merchandise_name String
   description      String?
@@ -260,12 +260,12 @@ model Merchandise {
 }
 
 model MerchandiseRedemption {
-  id Int      @id @default(autoincrement())
-  customer_id      Int
-  merchandise_id   Int
-  shop_id          Int
-  point_spent      Int
-  redemption_date  DateTime @default(now())
+  id              Int      @id @default(autoincrement())
+  customer_id     Int
+  merchandise_id  Int
+  shop_id         Int
+  point_spent     Int
+  redemption_date DateTime @default(now())
 
   customer    Customer    @relation(fields: [customer_id], references: [id])
   merchandise Merchandise @relation(fields: [merchandise_id], references: [id])
@@ -278,7 +278,7 @@ model MerchandiseRedemption {
 // ========================================
 
 model Orders {
-  id     Int       @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   shift_id     Int
   user_id      Int // User who processed this order (cashier)
   customer_id  Int?
@@ -299,11 +299,11 @@ model Orders {
 }
 
 model OrderItem {
-  id Int     @id @default(autoincrement())
-  product_id    Int
-  order_id      Int
-  quantity      Int
-  unit_price    Decimal @db.Decimal(10, 2)
+  id         Int     @id @default(autoincrement())
+  product_id Int
+  order_id   Int
+  quantity   Int
+  unit_price Decimal @db.Decimal(10, 2)
 
   product Product @relation(fields: [product_id], references: [id])
   order   Orders  @relation(fields: [order_id], references: [id])
@@ -312,7 +312,7 @@ model OrderItem {
 }
 
 model Payment {
-  id     Int      @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   order_id       Int
   amount_paid    Decimal  @db.Decimal(10, 2)
   currency       String   @default("VND")
@@ -331,16 +331,16 @@ model Payment {
 // ========================================
 
 model Subscription {
-  id Int       @id @default(autoincrement())
-  package_code    String    @unique
-  description     String?
-  price           Decimal   @db.Decimal(10, 2)
-  billing_cycle   String
-  features        Json?
-  is_active       Boolean   @default(true)
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @default(now()) @updatedAt
-  deleted_at      DateTime? // Soft delete - thời điểm đánh dấu xóa (sau 30 ngày sẽ xóa thật)
+  id            Int       @id @default(autoincrement())
+  package_code  String    @unique
+  description   String?
+  price         Decimal   @db.Decimal(10, 2)
+  billing_cycle String
+  features      Json?
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @default(now()) @updatedAt
+  deleted_at    DateTime? // Soft delete - thời điểm đánh dấu xóa (sau 30 ngày sẽ xóa thật)
 
   shop_subscriptions ShopSubscription[]
 
@@ -348,9 +348,9 @@ model Subscription {
 }
 
 model ShopSubscription {
-  id      Int       @id @default(autoincrement())
+  id                 Int       @id @default(autoincrement())
   subscription_id    Int
-  shop_id          Int
+  shop_id            Int
   number_of_renewals Int?      @default(0)
   start_date         DateTime  @default(now())
   end_date           DateTime? // Nullable để migrate được, sẽ được set khi tạo mới hoặc renew
@@ -359,21 +359,21 @@ model ShopSubscription {
   is_expired         Boolean   @default(false)
 
   subscription          Subscription          @relation(fields: [subscription_id], references: [id])
-  shop                Shop                @relation(fields: [shop_id], references: [id])
+  shop                  Shop                  @relation(fields: [shop_id], references: [id])
   subscription_payments SubscriptionPayment[]
 
   @@map("shop_subscriptions")
 }
 
 model SubscriptionPayment {
-  id Int      @id @default(autoincrement())
-  sub_tenant_id  Int
+  id             Int      @id @default(autoincrement())
+  sub_shop_id    Int
   method         String
   amount         Decimal  @db.Decimal(10, 2)
   created_at     DateTime @default(now())
   payment_status String
 
-  shop_subscription ShopSubscription @relation(fields: [sub_tenant_id], references: [id])
+  shop_subscription ShopSubscription @relation(fields: [sub_shop_id], references: [id])
 
   @@map("subscription_payments")
 }
