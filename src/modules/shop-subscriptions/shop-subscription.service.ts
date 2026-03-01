@@ -7,12 +7,14 @@ import {
   SubscriptionShopResponseDto,
 } from '../../dtos/subscription.dto';
 import { RoleService } from '../roles/role.service';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class ShopSubscriptionService {
   constructor(
     private prisma: PrismaService,
     private roleService: RoleService,
+    private emailService: EmailService,
   ) {}
 
   // ==================== SHOP SUBSCRIPTION METHODS ====================
@@ -53,6 +55,38 @@ export class ShopSubscriptionService {
     if (existingActiveShop) {
       throw new BadRequestException(
         `Bạn đã có shop subscription đang active. Mỗi user chỉ được có 1 shop subscription active. Sub Shop ID của bạn: ${existingActiveShop.id}`
+      );
+    }
+
+    // VALIDATE: Kiểm tra xem user có shop subscription đã expired nhưng chưa bị xóa không
+    // (Trong vòng 14 ngày sau khi expired, không cho tạo shop mới)
+    const existingExpiredShop = await this.prisma.shopSubscription.findFirst({
+      where: {
+        shop: {
+          users: {
+            some: {
+              id: userId,
+            },
+          },
+          is_active: true, // Chỉ check shop còn active (chưa bị soft delete)
+        },
+        is_expired: true,
+      },
+      include: {
+        shop: true,
+      },
+    });
+
+    if (existingExpiredShop) {
+      // Tính số ngày đã expired
+      const now = new Date();
+      const endDate = new Date(existingExpiredShop.end_date || new Date());
+      const daysExpired = Math.floor((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      throw new BadRequestException(
+        `Bạn không thể đăng ký shop mới vì đang có shop "${existingExpiredShop.shop.shop_name}" (ID: ${existingExpiredShop.shop_id}) đã hết hạn ${daysExpired} ngày trước. ` +
+        `Shop này sẽ bị vô hiệu hóa vĩnh viễn sau ${14 - daysExpired} ngày. ` +
+        `Vui lòng gia hạn shop hiện tại hoặc chờ đến khi shop bị vô hiệu hóa để đăng ký shop mới.`
       );
     }
 
@@ -103,9 +137,17 @@ export class ShopSubscriptionService {
           lte: new Date(), // end_date <= now
         },
       },
+      include: {
+        shop: {
+          include: {
+            users: true,
+          },
+        },
+        subscription: true,
+      },
     });
 
-    // Update tất cả các shop đã hết hạn
+    // Update tất cả các shop đã hết hạn và gửi notification
     if (expiredShops.length > 0) {
       await this.prisma.shopSubscription.updateMany({
         where: {
@@ -117,11 +159,33 @@ export class ShopSubscriptionService {
           is_expired: true,
         },
       });
+
+      // Gửi notification cho SHOPOWNER của mỗi shop
+      for (const shopSub of expiredShops) {
+        // Tìm SHOPOWNER gốc (owner_manager_id = null)
+        const shopOwner = shopSub.shop.users.find(
+          (u) => u.owner_manager_id === null && u.shop_id === shopSub.shop_id
+        );
+
+        if (shopOwner) {
+          // Gửi email thực sự
+          try {
+            await this.emailService.sendSubscriptionExpiredNotification(
+              shopOwner.email,
+              shopSub.shop.shop_name,
+              shopSub.subscription.package_code,
+              shopSub.end_date || new Date(),
+            );
+          } catch (error) {
+            // Không throw error để tiếp tục gửi cho các shop khác
+          }
+        }
+      }
     }
 
     return {
       updated: expiredShops.length,
-      message: `Đã cập nhật ${expiredShops.length} shop subscription đã hết hạn`,
+      message: `Đã cập nhật ${expiredShops.length} shop subscription đã hết hạn và gửi thông báo cho SHOPOWNER`,
     };
   }
 
@@ -176,13 +240,188 @@ export class ShopSubscriptionService {
         deletedCount++;
       } catch (error) {
         // Log lỗi nhưng tiếp tục xóa các shop khác
-        console.error(`Lỗi khi xóa shop ${shopSub.shop_id}:`, error);
       }
     }
 
     return {
       deleted: deletedCount,
       message: `Đã xóa ${deletedCount} shop chưa thanh toán sau 1 giờ`,
+    };
+  }
+
+  async deleteExpiredShopsAfter14Days(): Promise<{ deleted: number; message: string }> {
+    // Tìm các shop subscription đã expired hơn 14 ngày
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+    const expiredShopSubscriptions = await this.prisma.shopSubscription.findMany({
+      where: {
+        is_expired: true,
+        end_date: {
+          lte: fourteenDaysAgo, // end_date <= 14 days ago
+        },
+      },
+      include: {
+        shop: {
+          include: {
+            users: true, // Lấy tất cả users trong shop
+          },
+        },
+        subscription_payments: true,
+      },
+    });
+
+    let deletedCount = 0;
+
+    for (const shopSub of expiredShopSubscriptions) {
+      try {
+        const shopId = shopSub.shop_id;
+        const shop = shopSub.shop;
+
+        // Tìm SHOPOWNER gốc của shop này
+        const shopOwner = shop.users.find(
+          (u) => u.owner_manager_id === null && u.shop_id === shopId
+        );
+
+        // 1. Xóa tất cả users có owner_manager_id trùng với SHOPOWNER (STAFF)
+        if (shopOwner) {
+          const staffUsers = await this.prisma.user.findMany({
+            where: {
+              owner_manager_id: shopOwner.id,
+            },
+          });
+
+          for (const staff of staffUsers) {
+            // Xóa profile của staff (nếu có)
+            await this.prisma.profile.deleteMany({
+              where: { user_id: staff.id },
+            });
+
+            // Xóa staff user
+            await this.prisma.user.delete({
+              where: { id: staff.id },
+            });
+          }
+        }
+
+        // 2. GIỮ LẠI subscription_payments và shop_subscription
+        // Không xóa để còn tính doanh thu và audit trail
+
+        // 3. Xóa các dữ liệu liên quan đến shop
+        // - Xóa shift_staffs
+        const shifts = await this.prisma.shift.findMany({
+          where: { shop_id: shopId },
+        });
+        for (const shift of shifts) {
+          await this.prisma.shiftStaff.deleteMany({
+            where: { shift_id: shift.id },
+          });
+        }
+
+        // - Xóa order_items và payments của orders
+        const orders = await this.prisma.orders.findMany({
+          where: { shift: { shop_id: shopId } },
+        });
+        for (const order of orders) {
+          await this.prisma.orderItem.deleteMany({
+            where: { order_id: order.id },
+          });
+          await this.prisma.payment.deleteMany({
+            where: { order_id: order.id },
+          });
+        }
+
+        // - Xóa orders
+        await this.prisma.orders.deleteMany({
+          where: { shift: { shop_id: shopId } },
+        });
+
+        // - Xóa shifts
+        await this.prisma.shift.deleteMany({
+          where: { shop_id: shopId },
+        });
+
+        // - Xóa merchandise redemptions
+        await this.prisma.merchandiseRedemption.deleteMany({
+          where: { shop_id: shopId },
+        });
+
+        // - Xóa merchandises
+        await this.prisma.merchandise.deleteMany({
+          where: { shop_id: shopId },
+        });
+
+        // - Xóa inventory traits
+        const inventoryItems = await this.prisma.inventoryItem.findMany({
+          where: { inventory: { shop_id: shopId } },
+        });
+        for (const item of inventoryItems) {
+          await this.prisma.inventoryTrait.deleteMany({
+            where: { inventory_item_id: item.id },
+          });
+        }
+
+        // - Xóa inventory items
+        await this.prisma.inventoryItem.deleteMany({
+          where: { inventory: { shop_id: shopId } },
+        });
+
+        // - Xóa inventories
+        await this.prisma.inventory.deleteMany({
+          where: { shop_id: shopId },
+        });
+
+        // - Xóa shop categories
+        await this.prisma.shopCategory.deleteMany({
+          where: { shop_id: shopId },
+        });
+
+        // - Xóa customers
+        await this.prisma.customer.deleteMany({
+          where: { shop_id: shopId },
+        });
+
+        // 5. Reset SHOPOWNER về trạng thái ban đầu (không có shop, không có role SHOPOWNER)
+        if (shopOwner) {
+          // Tìm role USER hoặc set về null
+          let defaultRoleId: number | null = null;
+          try {
+            const userRole = await this.roleService.getRoleByCode('USER');
+            if (userRole && userRole.role_id) {
+              defaultRoleId = userRole.role_id;
+            }
+          } catch (error) {
+            // Không có role USER, set null
+          }
+
+          await this.prisma.user.update({
+            where: { id: shopOwner.id },
+            data: {
+              shop_id: null,
+              role_id: defaultRoleId,
+              owner_manager_id: null,
+            },
+          });
+        }
+
+        // 6. Soft delete shop (set is_active = false) thay vì xóa thật
+        // Giữ lại để không vi phạm foreign key với shop_subscription và payments
+        await this.prisma.shop.update({
+          where: { id: shopId },
+          data: { 
+            is_active: false,
+            shop_name: `[DELETED] ${shop.shop_name}`, // Đánh dấu đã xóa
+          },
+        });
+
+        deletedCount++;
+      } catch (error) {
+      }
+    }
+
+    return {
+      deleted: deletedCount,
+      message: `Đã xóa ${deletedCount} shop đã expired hơn 14 ngày (soft delete, giữ lại payments và subscription cho mục đích tính doanh thu)`,
     };
   }
 
@@ -297,22 +536,90 @@ export class ShopSubscriptionService {
       },
     });
 
-    // Xử lý logic assign shop và role khi payment success
-    // Tìm user dựa trên shop
-    const users = await this.prisma.user.findMany({
-      where: { shop_id: payment.shop_subscription.shop_id },
-    });
-
-    if (users.length > 0) {
-      await this.processSuccessfulPayment(paymentId, users[0].id);
-    }
+    // Xử lý logic khi payment success
+    await this.processSuccessfulPayment(paymentId);
 
     return this.transformPaymentToDto(updatedPayment, null);
   }
 
+  async renewSubscription(dto: any, userId: number): Promise<SubscriptionPaymentResponseDto> {
+    // Lấy user để biết shop_id
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException(`User ID ${userId} không tồn tại`);
+    }
+
+    if (!user.shop_id) {
+      throw new BadRequestException(`User chưa có shop. Không thể renew subscription.`);
+    }
+
+    // VALIDATE: Chỉ SHOPOWNER mới được renew
+    if (user.role?.role_code !== 'SHOPOWNER') {
+      throw new BadRequestException(`Chỉ SHOPOWNER mới có quyền gia hạn subscription.`);
+    }
+
+    // Lấy shop subscription hiện tại của shop
+    const shopSubscription = await this.prisma.shopSubscription.findFirst({
+      where: {
+        shop_id: user.shop_id,
+      },
+      orderBy: {
+        created_at: 'desc', // Lấy subscription mới nhất
+      },
+      include: {
+        subscription: true,
+      },
+    });
+
+    if (!shopSubscription) {
+      throw new NotFoundException(`Không tìm thấy subscription cho shop ID ${user.shop_id}`);
+    }
+
+    // Kiểm tra xem đã có payment pending cho subscription này chưa
+    const existingPendingPayment = await this.prisma.subscriptionPayment.findFirst({
+      where: {
+        sub_shop_id: shopSubscription.id,
+        payment_status: 'pending',
+      },
+    });
+
+    if (existingPendingPayment) {
+      throw new BadRequestException(
+        `Đã có payment đang chờ xử lý (Payment ID: ${existingPendingPayment.id}). Vui lòng hoàn tất payment này trước khi tạo renew mới.`
+      );
+    }
+
+    // Lấy giá từ subscription package
+    const amount = parseFloat(shopSubscription.subscription.price.toString());
+
+    // Tạo payment record với status 'pending' cho việc renew
+    const payment = await this.prisma.subscriptionPayment.create({
+      data: {
+        sub_shop_id: shopSubscription.id,
+        method: dto.method,
+        amount: amount,
+        payment_status: 'pending',
+      },
+      include: {
+        shop_subscription: {
+          include: {
+            shop: true,
+            subscription: true,
+          },
+        },
+      },
+    });
+
+    return this.transformPaymentToDto(payment, user);
+  }
+
   // ==================== PRIVATE HELPER METHODS ====================
 
-  private async processSuccessfulPayment(paymentId: number, userId: number): Promise<void> {
+  private async processSuccessfulPayment(paymentId: number): Promise<void> {
     // Lấy payment details
     const payment = await this.prisma.subscriptionPayment.findUnique({
       where: { id: paymentId },
@@ -330,44 +637,82 @@ export class ShopSubscriptionService {
       throw new NotFoundException(`Payment ID ${paymentId} không tồn tại`);
     }
 
-    // Lấy user
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: { role: true },
-    });
+    const shopSubscription = payment.shop_subscription;
+    const shop = shopSubscription.shop;
 
-    if (!user) {
-      throw new BadRequestException(`User ID ${userId} không tồn tại`);
-    }
+    // Kiểm tra xem shop đã active chưa (để phân biệt subscription đầu tiên hay renew)
+    const isFirstPayment = !shop.is_active;
 
-    // 1. Lấy hoặc tạo role SHOPOWNER
-    let shopOwnerRole;
-    try {
-      shopOwnerRole = await this.roleService.getRoleByCode('SHOPOWNER');
-    } catch (error) {
-      // Nếu role chưa tồn tại, tạo mới
-      shopOwnerRole = await this.roleService.createRole({
-        role_code: 'SHOPOWNER',
-        description: 'Shop Owner - Quản lý cửa hàng',
-        permissions: null,
+    if (isFirstPayment) {
+      // === TRƯỜNG HỢP 1: SUBSCRIPTION ĐẦU TIÊN ===
+      // Tìm user dựa trên shop
+      const users = await this.prisma.user.findMany({
+        where: { shop_id: shop.id },
+      });
+
+      if (users.length === 0) {
+        throw new BadRequestException(`Không tìm thấy user nào cho shop ID ${shop.id}`);
+      }
+
+      const user = users[0];
+
+      // 1. Lấy hoặc tạo role SHOPOWNER
+      let shopOwnerRole;
+      try {
+        shopOwnerRole = await this.roleService.getRoleByCode('SHOPOWNER');
+      } catch (error) {
+        // Nếu role chưa tồn tại, tạo mới
+        shopOwnerRole = await this.roleService.createRole({
+          role_code: 'SHOPOWNER',
+          description: 'Shop Owner - Quản lý cửa hàng',
+          permissions: null,
+        });
+      }
+
+      // 2. Update user với shop_id và role_id
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          shop_id: shop.id,
+          role_id: shopOwnerRole.role_id,
+          owner_manager_id: null, // Là SHOPOWNER gốc
+        },
+      });
+
+      // 3. Set shop is_active = true vì đã thanh toán thành công
+      await this.prisma.shop.update({
+        where: { id: shop.id },
+        data: { is_active: true },
+      });
+    } else {
+      // === TRƯỜNG HỢP 2: RENEW SUBSCRIPTION ===
+      // 1. Tăng number_of_renewals
+      await this.prisma.shopSubscription.update({
+        where: { id: shopSubscription.id },
+        data: {
+          number_of_renewals: (shopSubscription.number_of_renewals || 0) + 1,
+        },
+      });
+
+      // 2. Tính toán end_date mới dựa vào billing_cycle
+      const currentEndDate = shopSubscription.end_date || new Date();
+      const newEndDate = this.calculateEndDate(shopSubscription.subscription.billing_cycle, currentEndDate);
+
+      // 3. Update end_date và set is_expired = false
+      await this.prisma.shopSubscription.update({
+        where: { id: shopSubscription.id },
+        data: {
+          end_date: newEndDate,
+          is_expired: false,
+        },
+      });
+
+      // 4. Đảm bảo shop vẫn active
+      await this.prisma.shop.update({
+        where: { id: shop.id },
+        data: { is_active: true },
       });
     }
-
-    // 2. Update user với shop_id và role_id
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        shop_id: payment.shop_subscription.shop_id,
-        role_id: shopOwnerRole.role_id,
-        owner_manager_id: null, // Là SHOPOWNER gốc
-      },
-    });
-
-    // 3. Set shop is_active = true vì đã thanh toán thành công
-    await this.prisma.shop.update({
-      where: { id: payment.shop_subscription.shop_id },
-      data: { is_active: true },
-    });
   }
 
   // Helper: Tính toán end_date dựa vào billing_cycle

@@ -62,6 +62,26 @@ export class SubscriptionCronService {
     }
   }
 
+  // Chạy mỗi ngày lúc 02:00 (2 giờ sáng) để xóa shop expired hơn 14 ngày
+  @Cron(CronExpression.EVERY_DAY_AT_2AM, {
+    name: 'delete-expired-shops-after-14-days',
+    timeZone: 'Asia/Ho_Chi_Minh',
+  })
+  async handleDeleteExpiredShopsAfter14Days() {
+    this.logger.log('🗑️  Bắt đầu xóa các shop đã expired hơn 14 ngày...');
+
+    try {
+      const result = await this.shopSubscriptionService.deleteExpiredShopsAfter14Days();
+      if (result.deleted > 0) {
+        this.logger.log(`✅ ${result.message}`);
+      } else {
+        this.logger.log('✓ Không có shop nào cần xóa');
+      }
+    } catch (error) {
+      this.logger.error('❌ Lỗi khi xóa expired shops:', error);
+    }
+  }
+
   // Optional: Chạy mỗi giờ để check nếu muốn real-time hơn
   // @Cron(CronExpression.EVERY_HOUR, {
   //   name: 'check-expired-subscriptions-hourly',
