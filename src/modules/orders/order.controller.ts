@@ -44,7 +44,7 @@ export class OrderController {
 
     @Roles(Role.STAFF, Role.SHOPOWNER)
     @Post('list')
-    async getAllPendingOrders(@Body() dto: ViewOrderDto, @GetUser('id') user_id: number): Promise<ResponseType<OrderResponseDto[]>> {
+    async getAllOrders(@Body() dto: ViewOrderDto, @GetUser('id') user_id: number): Promise<ResponseType<OrderResponseDto[]>> {
         return new ResponseData<OrderResponseDto[]>( await this.orderService.getAllOrders(dto, user_id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 }

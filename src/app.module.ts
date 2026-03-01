@@ -13,6 +13,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './modules/auth/guard/auth.guard';
 import { RolesGuard } from './modules/auth/guard/role.guard';
+import { SubscriptionExpiredGuard } from './modules/auth/guard/subscription-expired.guard';
 import { getJwtExpiresIn, getJwtSecretKey } from './config/jwt.config';
 import { ProfileModule } from './modules/profiles/profile.module';
 import { SubscriptionModule } from './modules/subscriptions/subscription.module';
@@ -57,6 +58,10 @@ import { OrderItemModule } from './modules/order_items/order-item.module';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: SubscriptionExpiredGuard,
     }
   ],
 })

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { SubscriptionService } from './subscription.service';
+import { ShopSubscriptionService } from '../shop-subscriptions/shop-subscription.service';
 import { Public, AdminOnly } from '../../decorators/decorators';
 import {
   CreateSubscriptionDto,
@@ -10,13 +11,17 @@ import {
   SubscriptionShopResponseDto,
   CreateSubscriptionPaymentDto,
   SubscriptionPaymentResponseDto,
+  RenewSubscriptionPaymentDto,
 } from '../../dtos/subscription.dto';
 
 @ApiTags('Subscriptions')
 @ApiBearerAuth()
 @Controller('subscriptions')
 export class SubscriptionController {
-  constructor(private readonly subscriptionService: SubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: SubscriptionService,
+    private readonly shopSubscriptionService: ShopSubscriptionService,
+  ) {}
 
   // ==================== SUBSCRIPTION ENDPOINTS ====================
   // Chỉ ADMIN mới được tạo/sửa/xóa subscription packages
@@ -78,14 +83,12 @@ export class SubscriptionController {
     @Request() req: any,
   ): Promise<SubscriptionShopResponseDto> {
     const userId = req.user?.sub || req.user?.userId; // Thử cả sub và userId
-    console.log('User từ token:', req.user);
-    console.log('UserId:', userId);
     
     if (!userId) {
       throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
     }
     
-    return this.subscriptionService.createSubscriptionShop(dto, userId);
+    return this.shopSubscriptionService.createSubscriptionShop(dto, userId);
   }
 
   // ==================== SUBSCRIPTION PAYMENT ENDPOINTS ====================
@@ -105,14 +108,12 @@ export class SubscriptionController {
     @Request() req: any,
   ): Promise<SubscriptionPaymentResponseDto> {
     const userId = req.user?.sub || req.user?.userId; // Thử cả sub và userId
-    console.log('User từ token:', req.user);
-    console.log('UserId:', userId);
     
     if (!userId) {
       throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
     }
     
-    return this.subscriptionService.createSubscriptionPayment(dto, userId);
+    return this.shopSubscriptionService.createSubscriptionPayment(dto, userId);
   }
 
   @Put('payments/:id/status')
@@ -128,7 +129,29 @@ export class SubscriptionController {
   async updatePaymentStatus(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<SubscriptionPaymentResponseDto> {
-    return this.subscriptionService.updateSubscriptionPaymentStatus(id);
+    return this.shopSubscriptionService.updateSubscriptionPaymentStatus(id);
+  }
+
+  @Post('renew')
+  // Cần login và phải là SHOPOWNER
+  @ApiOperation({ 
+    summary: 'Gia hạn subscription - Cần login và là SHOPOWNER',
+    description: 'Tạo payment mới để gia hạn subscription. Amount tự động lấy từ subscription package hiện tại. Khi payment status = "success" (tại endpoint confirm payment), hệ thống sẽ tự động:\n1. Tăng number_of_renewals\n2. Cập nhật end_date mới\n3. Set is_expired = false\n4. Mở lại quyền truy cập cho SHOPOWNER và STAFF'
+  })
+  @ApiResponse({ status: 201, description: 'Tạo renew payment thành công' })
+  @ApiResponse({ status: 400, description: 'Đã có payment pending hoặc user không phải SHOPOWNER' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  async renewSubscription(
+    @Body() dto: RenewSubscriptionPaymentDto,
+    @Request() req: any,
+  ): Promise<SubscriptionPaymentResponseDto> {
+    const userId = req.user?.sub || req.user?.userId;
+    
+    if (!userId) {
+      throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
+    }
+    
+    return this.shopSubscriptionService.renewSubscription(dto, userId);
   }
 
   // ==================== MAINTENANCE ENDPOINTS (for CronJob or Manual) ====================
@@ -141,7 +164,7 @@ export class SubscriptionController {
   })
   @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
   async checkExpiredSubscriptions(): Promise<{ updated: number; message: string }> {
-    return this.subscriptionService.checkAndUpdateExpiredSubscriptions();
+    return this.shopSubscriptionService.checkAndUpdateExpiredSubscriptions();
   }
 
   @Delete('maintenance/cleanup-inactive')
@@ -153,4 +176,27 @@ export class SubscriptionController {
   @ApiResponse({ status: 200, description: 'Xóa thành công' })
   async cleanupInactiveSubscriptions(): Promise<{ deleted: number; message: string }> {
     return this.subscriptionService.deleteOldInactiveSubscriptions();
-  }}
+  }
+
+  @Delete('maintenance/cleanup-unpaid-shops')
+  @AdminOnly()
+  @ApiOperation({ 
+    summary: 'Xóa các shop chưa thanh toán sau 1 giờ (Admin hoặc CronJob)',
+    description: 'Tự động xóa các shop có is_active = false và created_at > 1 giờ trước mà không có payment success'
+  })
+  @ApiResponse({ status: 200, description: 'Xóa thành công' })
+  async cleanupUnpaidShops(): Promise<{ deleted: number; message: string }> {
+    return this.shopSubscriptionService.deleteUnpaidShops();
+  }
+
+  @Delete('maintenance/cleanup-expired-shops')
+  @AdminOnly()
+  @ApiOperation({ 
+    summary: 'Xóa các shop đã expired hơn 14 ngày (Admin hoặc CronJob)',
+    description: 'Tự động xóa vĩnh viễn shop đã expired hơn 14 ngày cùng tất cả dữ liệu liên quan:\n- Xóa tất cả STAFF (users có owner_manager_id)\n- Xóa shop subscription và payments\n- Xóa tất cả dữ liệu shop (orders, inventory, customers, etc.)\n- Reset SHOPOWNER về trạng thái ban đầu (không shop, không role SHOPOWNER)'
+  })
+  @ApiResponse({ status: 200, description: 'Xóa thành công' })
+  async cleanupExpiredShops(): Promise<{ deleted: number; message: string }> {
+    return this.shopSubscriptionService.deleteExpiredShopsAfter14Days();
+  }
+}//het

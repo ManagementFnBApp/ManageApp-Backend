@@ -16,9 +16,19 @@ export class OrderService {
 
         // 1. Lấy danh sách ID sản phẩm để kiểm tra
         const productIds = order_items.map(item => item.product_id);
-        await this.productsService.validateProductsExist(productIds);
 
         const order = await this.prisma.$transaction(async (prismaTx) => {
+            // Kiểm tra sự tồn tại của sản phẩm trong cùng transaction để tránh race condition
+            const existingProducts = await prismaTx.product.findMany({
+                where: {
+                    id: { in: productIds },
+                },
+                select: { id: true },
+            });
+
+            if (existingProducts.length !== productIds.length) {
+                throw new Error("One or more products do not exist");
+            }
             return prismaTx.orders.create({
                 data: {
                     customer_id: orderInfo.customerId,
