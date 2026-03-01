@@ -30,10 +30,9 @@ export class OrderService {
                     completed_at: null,
                     cancelled_at: null,
                     order_items: {
-                        create: order_items, // Nested write: Tự động insert vào bảng OrderItem
+                        create: order_items, 
                     },
                 },
-                // Include để lấy luôn thông tin tên sản phẩm trả về cho client
                 include: {
                     order_items: {
                         include: {
@@ -46,20 +45,6 @@ export class OrderService {
             });
         });
 
-        // const order = await this.prisma.orders.create({
-        //     data: {
-        //         shift_id: data.shiftId,
-        //         user_id: data.userId,
-        //         customer_id: data.customerId,
-        //         total_amount: data.totalAmount,
-        //         order_status: OrderStatus.PENDING,
-        //         notes: data.note || null,
-        //         completed_at: null,
-        //         cancelled_at: null
-        //     }
-        // });
-
-        // return this.transformToDto(order);
         return {
             order_id: order.id,
             items: order.order_items.map(item => ({
