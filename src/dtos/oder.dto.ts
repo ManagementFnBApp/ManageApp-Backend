@@ -34,9 +34,6 @@ export class UpdateOrderDto {
 export class ViewOrderDto {
     @IsString()
     status: string;
-
-    @IsNumber()
-    user_id: number;
 }
 
 export class OrderResponseDto {
