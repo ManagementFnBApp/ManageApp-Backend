@@ -96,12 +96,12 @@ export class OrderService {
         return this.transformToDto(order);
     }
 
-    async getAllOrders(dto: ViewOrderDto): Promise<OrderResponseDto[]> {
+    async getAllOrders(dto: ViewOrderDto, user_id: number): Promise<OrderResponseDto[]> {
         const orders = await this.prisma.orders.findMany({
             where: {
                 AND: [
                     {
-                        user_id: dto.user_id,
+                        user_id: user_id,
                         order_status: dto.status,
                     },
                 ],
