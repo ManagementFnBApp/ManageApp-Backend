@@ -5,7 +5,7 @@ import { Type } from "class-transformer";
 export class CreateOrderDto {
     @IsOptional()
     @IsInt()
-    customerId: number;
+    customerId?: number;
 
     @IsInt()
     shiftId: number;
