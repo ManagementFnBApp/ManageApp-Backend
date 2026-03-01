@@ -1,12 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SubscriptionService } from './subscription.service';
+import { ShopSubscriptionService } from '../shop-subscriptions/shop-subscription.service';
 
 @Injectable()
 export class SubscriptionCronService {
   private readonly logger = new Logger(SubscriptionCronService.name);
 
-  constructor(private readonly subscriptionService: SubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: SubscriptionService,
+    private readonly shopSubscriptionService: ShopSubscriptionService,
+  ) {}
 
   // Chạy mỗi ngày lúc 00:00 (nửa đêm)
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
@@ -17,7 +21,7 @@ export class SubscriptionCronService {
     this.logger.log('Bắt đầu kiểm tra shop subscription đã hết hạn...');
 
     try {
-      const result = await this.subscriptionService.checkAndUpdateExpiredSubscriptions();
+      const result = await this.shopSubscriptionService.checkAndUpdateExpiredSubscriptions();
       this.logger.log(` ${result.message}`);
     } catch (error) {
       this.logger.error('Lỗi khi kiểm tra expired subscriptions:', error);
@@ -49,12 +53,32 @@ export class SubscriptionCronService {
     this.logger.log('🗑️  Bắt đầu xóa các shop chưa thanh toán sau 1 giờ...');
 
     try {
-      const result = await this.subscriptionService.deleteUnpaidShops();
+      const result = await this.shopSubscriptionService.deleteUnpaidShops();
       if (result.deleted > 0) {
         this.logger.log(`✅ ${result.message}`);
       }
     } catch (error) {
       this.logger.error('❌ Lỗi khi xóa unpaid shops:', error);
+    }
+  }
+
+  // Chạy mỗi ngày lúc 02:00 (2 giờ sáng) để xóa shop expired hơn 14 ngày
+  @Cron(CronExpression.EVERY_DAY_AT_2AM, {
+    name: 'delete-expired-shops-after-14-days',
+    timeZone: 'Asia/Ho_Chi_Minh',
+  })
+  async handleDeleteExpiredShopsAfter14Days() {
+    this.logger.log('🗑️  Bắt đầu xóa các shop đã expired hơn 14 ngày...');
+
+    try {
+      const result = await this.shopSubscriptionService.deleteExpiredShopsAfter14Days();
+      if (result.deleted > 0) {
+        this.logger.log(`✅ ${result.message}`);
+      } else {
+        this.logger.log('✓ Không có shop nào cần xóa');
+      }
+    } catch (error) {
+      this.logger.error('❌ Lỗi khi xóa expired shops:', error);
     }
   }
 

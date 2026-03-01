@@ -28,6 +28,17 @@ export class CreateSubscriptionPaymentDto {
 // Không cần DTO cho update payment status nữa
 // API sẽ tự động update từ 'pending' thành 'success'
 
+export class RenewSubscriptionPaymentDto {
+  @ApiProperty({ example: 'BANK_TRANSFER' })
+  @IsString()
+  @IsNotEmpty()
+  method: string;
+
+  // subscription_id sẽ được lấy từ shop subscription hiện tại của user
+  // amount sẽ được lấy từ subscription package
+  // user_id sẽ được lấy từ token
+}
+
 export class SubscriptionPaymentResponseDto {
   sub_payment_id: number;
   sub_shop_id: number;

@@ -1,12 +1,13 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Put } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Put, Request, UnauthorizedException } from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from "@nestjs/swagger";
 import { UserService } from "./user.service";
-import { CreateUserDto, UpdateUserDto, UserResponseDto, AssignRoleDto } from "../../dtos/user.dto";
+import { CreateUserDto, UpdateUserDto, UserResponseDto, AssignRoleDto, CreateManagedUserDto } from "../../dtos/user.dto";
 import { ResponseData, ResponseType } from "src/global/globalResponse";
 import { HttpMessage, HttpStatus } from "src/global/globalEnum";
 import { Public, Roles } from "src/decorators/decorators";
 
 @ApiTags('Users')
+@ApiBearerAuth()
 @Controller('users')
 export class UserController {
     constructor(
@@ -49,5 +50,26 @@ export class UserController {
         @Body() dto: AssignRoleDto
     ): Promise<ResponseType<UserResponseDto>> {
         return new ResponseData(await this.userService.assignAdminRole(id, dto), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    }
+
+    @Post('managed')
+    @ApiOperation({ 
+        summary: 'SHOPOWNER t?o user m?i (SHOPOWNER ho?c STAFF) cho shop - Cần login',
+        description: 'SHOPOWNER tạo và gửi mail'
+    })
+    @ApiResponse({ status: 201, description: 'Tạo user thành công và gửi gmail' })
+    @ApiResponse({ status: 400, description: '' })
+    @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+    async createManagedUser(
+        @Body() dto: CreateManagedUserDto,
+        @Request() req: any,
+    ): Promise<ResponseType<UserResponseDto>> {
+        const userId = req.user?.sub || req.user?.userId;
+        
+        if (!userId) {
+            throw new UnauthorizedException('Không tìm thấy user_id vui lòng đăng nhập lại');
+        }
+        
+        return new ResponseData(await this.userService.createManagedUser(userId, dto), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 }
