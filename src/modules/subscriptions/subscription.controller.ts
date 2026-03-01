@@ -199,4 +199,4 @@ export class SubscriptionController {
   async cleanupExpiredShops(): Promise<{ deleted: number; message: string }> {
     return this.shopSubscriptionService.deleteExpiredShopsAfter14Days();
   }
-}
+}//
