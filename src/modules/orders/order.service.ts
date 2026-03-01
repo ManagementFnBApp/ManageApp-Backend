@@ -1,28 +1,72 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
-import { CreateOrderDto, OrderResponseDto, UpdateOrderDto } from "src/dtos/oder.dto";
+import { CreateOrderDto, OrderResponseDto, UpdateOrderDto, ViewOrderDto } from "src/dtos/oder.dto";
 import { OrderStatus } from "src/global/globalEnum";
+import { ProductService } from "../products/product.service";
 
 @Injectable()
 export class OrderService {
     constructor(
-        private prisma: PrismaService
+        private prisma: PrismaService,
+        private productsService: ProductService
     ) { }
 
-    async createOrder(data: CreateOrderDto): Promise<OrderResponseDto> {
-        const order = await this.prisma.orders.create({
-            data: {
-                shift_id: data.shiftId,
-                user_id: data.userId,
-                customer_id: data.customerId,
-                total_amount: data.totalAmount,
-                order_status: OrderStatus.PENDING,
-                notes: data.note || null,
-                completed_at: null,
-                cancelled_at: null
-            }
+    async createOrder(data: CreateOrderDto, user_id: number): Promise<any> {
+        const { order_items, ...orderInfo } = data;
+
+        // 1. Lấy danh sách ID sản phẩm để kiểm tra
+        const productIds = order_items.map(item => item.product_id);
+        await this.productsService.validateProductsExist(productIds);
+
+        const order = await this.prisma.$transaction(async (prismaTx) => {
+            return prismaTx.orders.create({
+                data: {
+                    customer_id: orderInfo.customerId,
+                    user_id: user_id,
+                    shift_id: orderInfo.shiftId,
+                    total_amount: orderInfo.totalAmount,
+                    order_status: OrderStatus.PENDING,
+                    notes: orderInfo.note || null,
+                    completed_at: null,
+                    cancelled_at: null,
+                    order_items: {
+                        create: order_items, // Nested write: Tự động insert vào bảng OrderItem
+                    },
+                },
+                // Include để lấy luôn thông tin tên sản phẩm trả về cho client
+                include: {
+                    order_items: {
+                        include: {
+                            product: {
+                                select: { product_name: true }
+                            },
+                        },
+                    },
+                },
+            });
         });
-        return this.transformToDto(order);
+
+        // const order = await this.prisma.orders.create({
+        //     data: {
+        //         shift_id: data.shiftId,
+        //         user_id: data.userId,
+        //         customer_id: data.customerId,
+        //         total_amount: data.totalAmount,
+        //         order_status: OrderStatus.PENDING,
+        //         notes: data.note || null,
+        //         completed_at: null,
+        //         cancelled_at: null
+        //     }
+        // });
+
+        // return this.transformToDto(order);
+        return {
+            order_id: order.id,
+            items: order.order_items.map(item => ({
+                product_name: item.product.product_name,
+                quantity: item.quantity,
+            })),
+        };
     }
 
     async updateOrder(id: number, data: UpdateOrderDto): Promise<OrderResponseDto> {
@@ -67,10 +111,16 @@ export class OrderService {
         return this.transformToDto(order);
     }
 
-    async getAllOrders(status: string): Promise<OrderResponseDto[]> {
+    async getAllOrders(dto: ViewOrderDto): Promise<OrderResponseDto[]> {
         const orders = await this.prisma.orders.findMany({
             where: {
-                order_status: status,
+                AND: [
+                    {
+                        user_id: dto.user_id,
+                        order_status: dto.status,
+                    },
+                ],
+
             }
         });
         return orders.map(order => this.transformToDto(order));

@@ -46,24 +46,14 @@ export class UserService {
             throw new BadRequestException("Email or username was existed");
         }
 
-        // Tìm role nếu có role_code
-        let roleId: number | null = null;
-        if (body.role_code) {
-            const role = await this.prisma.role.findUnique({
-                where: { role_code: body.role_code }
-            });
-            if (!role) {
-                throw new BadRequestException(`Role ${body.role_code} không tồn tại`);
-            }
-            roleId = role.id;
-        }
+        // Tìm role nếu có role_id
 
         const salt = await bcrypt.genSalt();
         const hashPassword = await bcrypt.hash(body.password, salt);
 
         const user = await this.prisma.user.create({
             data: {
-                role_id: roleId,
+                role_id: body.role_id || null,
                 shop_id: body.shop_id || null,
                 owner_manager_id: body.owner_manager_id || null,
                 email: body.email,

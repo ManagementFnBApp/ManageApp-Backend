@@ -15,19 +15,10 @@ export class RolesGuard implements CanActivate {
             return true;
         }
         const { user } = context.switchToHttp().getRequest();
-        
+
         // Kiểm tra role
         const hasRole = requiredRoles.some((role) => user.role?.includes(role));
-        if (!hasRole) {
-            return false;
-        }
-        
-        // Nếu role yêu cầu là SHOPOWNER, kiểm tra xem có phải SHOPOWNER gốc không
-        if (requiredRoles.includes('SHOPOWNER')) {
-            // Chỉ cho phép SHOPOWNER gốc (owner_manager_id = null)
-            return user.ownerManagerId === null || user.ownerManagerId === undefined;
-        }
-        
-        return true;
+
+        return hasRole;
     }
 }
