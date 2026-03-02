@@ -2,7 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuard
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { SubscriptionService } from './subscription.service';
 import { ShopSubscriptionService } from '../shop-subscriptions/shop-subscription.service';
-import { Public, AdminOnly } from '../../decorators/decorators';
+import { Public, Roles } from '../../decorators/decorators';
 import {
   CreateSubscriptionDto,
   UpdateSubscriptionDto,
@@ -27,7 +27,7 @@ export class SubscriptionController {
   // Chỉ ADMIN mới được tạo/sửa/xóa subscription packages
 
   @Post()
-  @AdminOnly() // Cần role ADMIN
+  @Roles('ADMIN') // Cần role ADMIN
   @ApiOperation({ summary: 'Tạo gói subscription mới (Chỉ Admin)' })
   @ApiResponse({ status: 201, description: 'Tạo subscription thành công' })
   @ApiResponse({ status: 403, description: 'Không có quyền ADMIN' })
@@ -44,7 +44,7 @@ export class SubscriptionController {
   }
 
   @Put(':id')
-  @AdminOnly() // Cần role ADMIN
+  @Roles('ADMIN') // Cần role ADMIN
   @ApiOperation({ summary: 'Cập nhật gói subscription (Chỉ Admin)' })
   @ApiResponse({ status: 200, description: 'Cập nhật subscription thành công' })
   @ApiResponse({ status: 403, description: 'Không có quyền ADMIN' })
@@ -57,7 +57,7 @@ export class SubscriptionController {
   }
 
   @Delete(':id')
-  @AdminOnly() // Cần role ADMIN
+  @Roles('ADMIN') // Cần role ADMIN
   @ApiOperation({ summary: 'Xóa gói subscription (Chỉ Admin)' })
   @ApiResponse({ status: 200, description: 'Xóa subscription thành công' })
   @ApiResponse({ status: 400, description: 'Không thể xóa vì đang có shop sử dụng' })
@@ -157,7 +157,7 @@ export class SubscriptionController {
   // ==================== MAINTENANCE ENDPOINTS (for CronJob or Manual) ====================
 
   @Post('maintenance/check-expired')
-  @AdminOnly()
+  @Roles('ADMIN')
   @ApiOperation({ 
     summary: 'Kiểm tra và cập nhật các shop subscription đã hết hạn (Admin hoặc CronJob)',
     description: 'Tự động set is_expired = true cho các shop có end_date <= now'
@@ -168,7 +168,7 @@ export class SubscriptionController {
   }
 
   @Delete('maintenance/cleanup-inactive')
-  @AdminOnly()
+  @Roles('ADMIN')
   @ApiOperation({ 
     summary: 'Xóa vĩnh viễn các subscription đã inactive hơn 30 ngày (Admin hoặc CronJob)',
     description: 'Tự động xóa các subscription có is_active = false và deleted_at > 30 ngày trước'
@@ -179,7 +179,7 @@ export class SubscriptionController {
   }
 
   @Delete('maintenance/cleanup-unpaid-shops')
-  @AdminOnly()
+  @Roles('ADMIN')
   @ApiOperation({ 
     summary: 'Xóa các shop chưa thanh toán sau 1 giờ (Admin hoặc CronJob)',
     description: 'Tự động xóa các shop có is_active = false và created_at > 1 giờ trước mà không có payment success'
@@ -190,7 +190,7 @@ export class SubscriptionController {
   }
 
   @Delete('maintenance/cleanup-expired-shops')
-  @AdminOnly()
+  @Roles('ADMIN')
   @ApiOperation({ 
     summary: 'Xóa các shop đã expired hơn 14 ngày (Admin hoặc CronJob)',
     description: 'Tự động xóa vĩnh viễn shop đã expired hơn 14 ngày cùng tất cả dữ liệu liên quan:\n- Xóa tất cả STAFF (users có owner_manager_id)\n- Xóa shop subscription và payments\n- Xóa tất cả dữ liệu shop (orders, inventory, customers, etc.)\n- Reset SHOPOWNER về trạng thái ban đầu (không shop, không role SHOPOWNER)'
