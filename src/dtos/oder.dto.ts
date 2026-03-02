@@ -32,6 +32,7 @@ export class UpdateOrderDto {
 }
 
 export class ViewOrderDto {
+    @IsOptional()
     @IsString()
     status: string;
 }
@@ -44,6 +45,7 @@ export class OrderResponseDto {
     note: string;
     totalAmount: number;
     orderStatus: string;
+    createdAt?: string | null;
     completedAt?: Date | null;
     cancelledAt?: Date | null;
 }

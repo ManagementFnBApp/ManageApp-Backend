@@ -106,19 +106,29 @@ export class OrderService {
         return this.transformToDto(order);
     }
 
-    async getAllOrders(dto: ViewOrderDto, user_id: number): Promise<OrderResponseDto[]> {
+    async getAllOrders(dto: ViewOrderDto, user_id: number): Promise<any[]> {
         const orders = await this.prisma.orders.findMany({
             where: {
-                AND: [
-                    {
-                        user_id: user_id,
-                        order_status: dto.status,
+                user_id: user_id,
+                ...(dto.status ? { order_status: dto.status } : {}),
+            },
+            include: {
+                order_items: {
+                    include: {
+                        product: {
+                            select: { product_name: true },
+                        },
                     },
-                ],
-
-            }
+                },
+            },
         });
-        return orders.map(order => this.transformToDto(order));
+        return orders.map(order => ({
+            ...this.transformToDto(order),
+            order_items: order.order_items.map(item => ({
+                ...item,
+                unit_price: Number(item.unit_price),
+            })),
+        }));
     }
 
     transformToDto(order: any): OrderResponseDto {
@@ -128,8 +138,9 @@ export class OrderService {
             userId: order.user_id,
             shiftId: order.shift_id,
             note: order.notes || null,
-            totalAmount: order.total_amount,
+            totalAmount: Number(order.total_amount),
             orderStatus: order.order_status,
+            createdAt: order.created_at?.toISOString() || null,
             completedAt: order.completed_at || null,
             cancelledAt: order.cancelled_at || null
         };
