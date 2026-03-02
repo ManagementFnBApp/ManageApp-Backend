@@ -1,10 +1,10 @@
 import { Body, Controller, Param, Post, Put } from "@nestjs/common";
 import { OrderService } from "./order.service";
-import { CreateOrderDto, OrderResponseDto, UpdateOrderDto } from "src/dtos/oder.dto";
+import { CreateOrderDto, OrderResponseDto, UpdateOrderDto, ViewOrderDto } from "src/dtos/oder.dto";
 import { ResponseData, ResponseType } from "src/global/globalResponse";
-import { HttpMessage, HttpStatus } from "src/global/globalEnum";
+import { HttpMessage, HttpStatus, Role } from "src/global/globalEnum";
 import { ApiTags } from "@nestjs/swagger";
-import { Public } from "src/decorators/decorators";
+import { GetUser, Public, Roles } from "src/decorators/decorators";
 
 @ApiTags('Orders')
 @Controller('orders')
@@ -13,10 +13,10 @@ export class OrderController {
         private readonly orderService: OrderService
     ) {}
 
-    @Public()
+    @Roles(Role.STAFF, Role.SHOPOWNER)
     @Post()
-    async createOrder(@Body() createOrderDto: CreateOrderDto): Promise<ResponseType<OrderResponseDto>> {
-        return new ResponseData( await this.orderService.createOrder(createOrderDto), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    async createOrder(@Body() createOrderDto: CreateOrderDto, @GetUser('id') userId: number): Promise<ResponseType<any>> {
+        return new ResponseData( await this.orderService.createOrder(createOrderDto, userId), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 
     @Put(':id')
@@ -40,5 +40,11 @@ export class OrderController {
         @Param('id') id: number
     ): Promise<ResponseType<OrderResponseDto>> {
         return new ResponseData( await this.orderService.cancelOrder(id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    }
+
+    @Roles(Role.STAFF, Role.SHOPOWNER)
+    @Post('list')
+    async getAllOrders(@Body() dto: ViewOrderDto, @GetUser('id') user_id: number): Promise<ResponseType<OrderResponseDto[]>> {
+        return new ResponseData<OrderResponseDto[]>( await this.orderService.getAllOrders(dto, user_id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 }

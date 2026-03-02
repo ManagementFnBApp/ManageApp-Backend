@@ -27,10 +27,11 @@ export class AuthService {
         }
         // Tạo payload với sub chứa user_id
         const payload = {
-            sub: user.user_id,
+            id: user.user_id,
             username: user.username,
             role: user.role,
-            owner_manager_id: user.owner_manager_id
+            owner_manager_id: user.owner_manager_id,
+            shop_id: user.shop_id
         };
         return new AuthPermission({
             user_id: user.user_id,
@@ -45,7 +46,6 @@ export class AuthService {
         // Shop sẽ được tạo sau khi user thanh toán subscription thành công
         return this.userService.createUser({
             ...dto,
-            role_code: undefined,
         });
     }
 

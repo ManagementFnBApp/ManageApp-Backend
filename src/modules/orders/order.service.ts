@@ -1,28 +1,67 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
-import { CreateOrderDto, OrderResponseDto, UpdateOrderDto } from "src/dtos/oder.dto";
+import { CreateOrderDto, OrderResponseDto, UpdateOrderDto, ViewOrderDto } from "src/dtos/oder.dto";
 import { OrderStatus } from "src/global/globalEnum";
+import { ProductService } from "../products/product.service";
 
 @Injectable()
 export class OrderService {
     constructor(
-        private prisma: PrismaService
+        private prisma: PrismaService,
+        private productsService: ProductService
     ) { }
 
-    async createOrder(data: CreateOrderDto): Promise<OrderResponseDto> {
-        const order = await this.prisma.orders.create({
-            data: {
-                shift_id: data.shiftId,
-                user_id: data.userId,
-                customer_id: data.customerId,
-                total_amount: data.totalAmount,
-                order_status: OrderStatus.PENDING,
-                notes: data.note || null,
-                completed_at: null,
-                cancelled_at: null
+    async createOrder(data: CreateOrderDto, user_id: number): Promise<any> {
+        const { order_items, ...orderInfo } = data;
+
+        // 1. Lấy danh sách ID sản phẩm để kiểm tra
+        const productIds = order_items.map(item => item.product_id);
+
+        const order = await this.prisma.$transaction(async (prismaTx) => {
+            // Kiểm tra sự tồn tại của sản phẩm trong cùng transaction để tránh race condition
+            const existingProducts = await prismaTx.product.findMany({
+                where: {
+                    id: { in: productIds },
+                },
+                select: { id: true },
+            });
+
+            if (existingProducts.length !== productIds.length) {
+                throw new Error("One or more products do not exist");
             }
+            return prismaTx.orders.create({
+                data: {
+                    customer_id: orderInfo.customerId,
+                    user_id: user_id,
+                    shift_id: orderInfo.shiftId,
+                    total_amount: orderInfo.totalAmount,
+                    order_status: OrderStatus.PENDING,
+                    notes: orderInfo.note || null,
+                    completed_at: null,
+                    cancelled_at: null,
+                    order_items: {
+                        create: order_items, 
+                    },
+                },
+                include: {
+                    order_items: {
+                        include: {
+                            product: {
+                                select: { product_name: true }
+                            },
+                        },
+                    },
+                },
+            });
         });
-        return this.transformToDto(order);
+
+        return {
+            order_id: order.id,
+            items: order.order_items.map(item => ({
+                product_name: item.product.product_name,
+                quantity: item.quantity,
+            })),
+        };
     }
 
     async updateOrder(id: number, data: UpdateOrderDto): Promise<OrderResponseDto> {
@@ -65,6 +104,21 @@ export class OrderService {
             }
         });
         return this.transformToDto(order);
+    }
+
+    async getAllOrders(dto: ViewOrderDto, user_id: number): Promise<OrderResponseDto[]> {
+        const orders = await this.prisma.orders.findMany({
+            where: {
+                AND: [
+                    {
+                        user_id: user_id,
+                        order_status: dto.status,
+                    },
+                ],
+
+            }
+        });
+        return orders.map(order => this.transformToDto(order));
     }
 
     transformToDto(order: any): OrderResponseDto {

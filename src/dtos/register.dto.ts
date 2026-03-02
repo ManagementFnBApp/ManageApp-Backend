@@ -9,9 +9,9 @@ export class RegisterDto {
   @IsOptional()
   ownerManagerId?: number;
 
-  @IsString()
+  @IsInt()
   @IsOptional()
-  roleCode?: string;
+  role_id?: number;
 
   @IsEmail({}, { message: "Email không hợp lệ" })
   @IsNotEmpty({ message: "Email không được để trống" })

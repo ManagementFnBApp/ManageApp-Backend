@@ -152,6 +152,20 @@ export class ProductService {
         return { message: `Product with ID ${id} has been permanently deleted` };
     }
 
+    async validateProductsExist(productIds: number[]) {
+        const products = await this.prisma.product.findMany({
+            where: {
+                id: { in: productIds },
+                is_active: true
+            },
+        });
+
+        if (products.length !== productIds.length) {
+            throw new NotFoundException('Một hoặc nhiều sản phẩm không tồn tại hoặc đã ngừng bán.');
+        }
+        return products;
+    }
+
     private mapToResponseDto(product: any): ProductResponseDto {
         return {
             productId: product.id,

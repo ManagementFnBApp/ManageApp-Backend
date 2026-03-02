@@ -39,9 +39,9 @@ export class CreateUserDto {
     @IsOptional()
     owner_manager_id?: number;
 
-    @IsString()
+    @IsInt()
     @IsOptional()
-    role_code?: string;
+    role_id?: number;
 
     @IsEmail({}, { message: "Email không hợp lệ" })
     @IsNotEmpty({ message: "Email không được để trống" })

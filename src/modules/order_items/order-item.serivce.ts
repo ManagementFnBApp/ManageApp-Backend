@@ -5,5 +5,12 @@ import { PrismaService } from "../../../prisma/prisma.service";
 export class OrderItemService {
     constructor(
         private prisma: PrismaService
-    ) {}
+    ) { }
+
+    async findByOrderId(orderId: number) {
+        return this.prisma.orderItem.findMany({
+            where: { order_id: orderId },
+            include: { product: true }
+        });
+    }
 }
