@@ -56,7 +56,7 @@ export class OrderService {
         });
 
         return {
-            order_id: order.id,
+            id: order.id,
             items: order.order_items.map(item => ({
                 product_name: item.product.product_name,
                 quantity: item.quantity,
