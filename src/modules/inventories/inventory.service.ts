@@ -7,7 +7,7 @@ import {
     UpdateInventoryItemDto,
     InventoryItemResponseDto
 } from '../../dtos/inventory.dto';
-import { PrismaService } from "../../../prisma/prisma.service";
+import { PrismaService } from 'db/prisma.service';
 
 @Injectable()
 export class InventoryService {

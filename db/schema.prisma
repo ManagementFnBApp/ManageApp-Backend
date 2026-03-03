@@ -166,6 +166,8 @@ model ShopCategory {
   category Category @relation(fields: [category_id], references: [id])
 
   @@id([shop_id, category_id])
+
+  @@map("shop_categories")
 }
 
 model Product {

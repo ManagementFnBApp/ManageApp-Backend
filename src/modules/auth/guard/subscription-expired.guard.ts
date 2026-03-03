@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { PrismaService } from "../../../../prisma/prisma.service";
+import { PrismaService } from "db/prisma.service";
 
 /**
  * Guard để kiểm tra xem subscription của shop có hết hạn không
@@ -86,7 +86,7 @@ export class SubscriptionExpiredGuard implements CanActivate {
             const now = new Date();
             const endDate = new Date(shopSubscription.end_date || new Date());
             const daysExpired = Math.floor((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
-            
+
             throw new ForbiddenException(
                 `Subscription của shop đã hết hạn vào ${shopSubscription.end_date?.toLocaleDateString('vi-VN')} ` +
                 `(${daysExpired} ngày trước). ` +

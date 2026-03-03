@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe, ParseBoolPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe, ParseBoolPipe, UseGuards } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto, UpdateProductDto } from '../../dtos/product.dto';
+import { AuthGuard } from '../auth/guard/auth.guard';
 
 @Controller('products')
+@UseGuards(AuthGuard)
 export class ProductController {
     constructor(private readonly productService: ProductService) { }
 

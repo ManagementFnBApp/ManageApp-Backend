@@ -4,7 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './modules/users/user.module';
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../db/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { RoleModule } from './modules/roles/role.module';
 import { ProductModule } from './modules/products/product.module';
@@ -20,6 +20,8 @@ import { SubscriptionModule } from './modules/subscriptions/subscription.module'
 import { OrderModule } from './modules/orders/order.module';
 import { OrderItemModule } from './modules/order_items/order-item.module';
 import { CustomerModule } from './modules/customers/customer.module';
+import { CategoryModule } from './modules/categories/category.module';
+import { ShopCategoryModule } from './modules/shop-category/shop-category.module';
 
 @Module({
   imports: [
@@ -48,7 +50,9 @@ import { CustomerModule } from './modules/customers/customer.module';
     SubscriptionModule,
     OrderModule,
     OrderItemModule,
-    CustomerModule
+    CustomerModule,
+    CategoryModule,
+    ShopCategoryModule
   ],
   controllers: [AppController],
   providers: [
