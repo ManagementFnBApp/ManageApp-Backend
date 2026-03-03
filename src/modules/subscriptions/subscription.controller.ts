@@ -82,7 +82,7 @@ export class SubscriptionController {
     @Body() dto: CreateSubscriptionShopDto,
     @Request() req: any,
   ): Promise<SubscriptionShopResponseDto> {
-    const userId = req.user?.sub || req.user?.userId; // Thử cả sub và userId
+    const userId = req.user?.id // Thử cả sub và userId
     
     if (!userId) {
       throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
@@ -107,7 +107,7 @@ export class SubscriptionController {
     @Body() dto: CreateSubscriptionPaymentDto,
     @Request() req: any,
   ): Promise<SubscriptionPaymentResponseDto> {
-    const userId = req.user?.sub || req.user?.userId; // Thử cả sub và userId
+    const userId = req.user?.id // Thử cả sub và userId
     
     if (!userId) {
       throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
@@ -145,7 +145,7 @@ export class SubscriptionController {
     @Body() dto: RenewSubscriptionPaymentDto,
     @Request() req: any,
   ): Promise<SubscriptionPaymentResponseDto> {
-    const userId = req.user?.sub || req.user?.userId;
+    const userId = req.user?.id;
     
     if (!userId) {
       throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
