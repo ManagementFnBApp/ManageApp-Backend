@@ -145,7 +145,7 @@ export class SubscriptionController {
     @Body() dto: RenewSubscriptionPaymentDto,
     @Request() req: any,
   ): Promise<SubscriptionPaymentResponseDto> {
-    const userId = req.user?.id
+    const userId = req.user?.id;
     
     if (!userId) {
       throw new UnauthorizedException('Không tìm thấy userId trong token. Vui lòng đăng nhập lại.');
