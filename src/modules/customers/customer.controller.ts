@@ -2,30 +2,41 @@ import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from "@nes
 import { CustomerService } from "./customer.service";
 import { CreateCustomerDto, UpdateCustomerDto, CustomerResponseDto } from "src/dtos/customer.dto";
 import { AuthGuard } from "../auth/guard/auth.guard";
-import { GetUser } from "src/decorators/decorators";
+import { GetUser, Roles } from "src/decorators/decorators";
 import { ResponseData, ResponseType } from "src/global/globalResponse";
-import { HttpMessage, HttpStatus } from "src/global/globalEnum";
+import { HttpMessage, HttpStatus, Role } from "src/global/globalEnum";
 
 @Controller('customers')
 @UseGuards(AuthGuard)
 export class CustomerController {
     constructor(private customerService: CustomerService) { }
 
+    @Roles(Role.STAFF)
     @Post()
     async createCustomer(@Body() createCustomerDto: CreateCustomerDto): Promise<CustomerResponseDto> {
         return this.customerService.createCustomer(createCustomerDto);
     }
 
+    @Roles(Role.SHOPOWNER)
     @Get()
-    async getAllCustomers(@GetUser('shop_id') shop_id: number): Promise<CustomerResponseDto[]> {
-        return this.customerService.getAllCustomers(shop_id);
+    async getAllCustomers(@GetUser('shop_id') shop_id: number): Promise<ResponseType<CustomerResponseDto[]>> {
+        try{
+            return new ResponseData<CustomerResponseDto[]>(await this.customerService.getAllCustomers(shop_id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+        } catch (error) {
+            return new ResponseData<CustomerResponseDto[]>(null, HttpStatus.ERROR, error.message);
+        }
     }
 
     @Get(':id')
-    async getCustomerById(@Param('id') id: number, @GetUser('shop_id') shop_id: number): Promise<CustomerResponseDto> {
-        return this.customerService.getCustomerById(id, shop_id);
+    async getCustomerById(@Param('id') id: number, @GetUser('shop_id') shop_id: number): Promise<ResponseType<CustomerResponseDto>> {
+        try{
+            return new ResponseData<CustomerResponseDto>(await this.customerService.getCustomerById(id, shop_id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+        } catch (error) {
+            return new ResponseData<CustomerResponseDto>(null, HttpStatus.ERROR, error.message);
+        }
     }
 
+    @Roles(Role.STAFF)
     @Get(':phone')
     async getCustomerByPhone(@Param('phone') phone: string, @GetUser('shop_id') shop_id: number): Promise<ResponseType<CustomerResponseDto>> {
         try{
@@ -33,23 +44,33 @@ export class CustomerController {
         } catch (error) {
             return new ResponseData<CustomerResponseDto>(null, HttpStatus.ERROR, error.message);
         }
-        
     }
 
+    @Roles(Role.STAFF)
     @Put(':id')
     async updateCustomer(
         @Param('id') id: number,
         @Body() updateCustomerDto: UpdateCustomerDto,
         @GetUser('shop_id') shop_id: number
     ): Promise<ResponseType<CustomerResponseDto>> {
-        return new ResponseData(await this.customerService.updateCustomer(id, updateCustomerDto, shop_id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+        try{
+            return new ResponseData(await this.customerService.updateCustomer(id, updateCustomerDto, shop_id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+        } catch (error) {
+            return new ResponseData<CustomerResponseDto>(null, HttpStatus.ERROR, error.message);
+        }
     }
 
+    @Roles(Role.SHOPOWNER)
     @Delete(':id')
-    async deleteCustomer(@Param('id') id: number, @GetUser('shop_id') shop_id: number): Promise<{ message: string }> {
-        return this.customerService.deleteCustomer(id, shop_id);
+    async deleteCustomer(@Param('id') id: number, @GetUser('shop_id') shop_id: number): Promise<ResponseType<{ message: string }>> {
+        try{
+            return new ResponseData(await this.customerService.deleteCustomer(id, shop_id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+        } catch (error) {
+            return new ResponseData<{ message: string }>(null, HttpStatus.ERROR, error.message);
+        }
     }
 
+    @Roles(Role.STAFF)
     @Put(':id/loyalty-points')
     async updateLoyaltyPoints(
         @Param('id') id: number,

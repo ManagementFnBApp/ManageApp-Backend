@@ -1,8 +1,8 @@
 import { Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
-import { PrismaService } from "../../../prisma/prisma.service";
 import { CreateUserDto, UpdateUserDto, UserResponseDto, AssignRoleDto, CreateManagedUserDto } from "../../dtos/user.dto";
 import { EmailService } from "../email/email.service";
 import * as bcrypt from 'bcrypt'
+import { PrismaService } from "db/prisma.service";
 
 @Injectable()
 export class UserService {
@@ -274,7 +274,7 @@ export class UserService {
     }
 
     async findOrCreate(data: { email: string, fullName: string }): Promise<UserResponseDto> {
-        let user = await this.prisma.user.findUnique({ 
+        let user = await this.prisma.user.findUnique({
             where: { email: data.email },
             include: {
                 role: true,

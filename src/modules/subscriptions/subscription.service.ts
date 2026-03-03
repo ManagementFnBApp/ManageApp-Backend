@@ -1,14 +1,14 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
 import {
   CreateSubscriptionDto,
   UpdateSubscriptionDto,
   SubscriptionResponseDto,
 } from '../../dtos/subscription.dto';
+import { PrismaService } from 'db/prisma.service';
 
 @Injectable()
 export class SubscriptionService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   // ==================== SUBSCRIPTION METHODS ====================
 

@@ -1,13 +1,15 @@
-import { Body, Controller, Param, Post, Put } from "@nestjs/common";
+import { Body, Controller, Param, Post, Put, UseGuards } from "@nestjs/common";
 import { OrderService } from "./order.service";
 import { OrderDto, OrderResponseDto, ViewOrderDto } from "src/dtos/oder.dto";
 import { ResponseData, ResponseType } from "src/global/globalResponse";
 import { HttpMessage, HttpStatus, Role } from "src/global/globalEnum";
 import { ApiTags } from "@nestjs/swagger";
 import { GetUser, Public, Roles } from "src/decorators/decorators";
+import { AuthGuard } from "../auth/guard/auth.guard";
 
 @ApiTags('Orders')
 @Controller('orders')
+@UseGuards(AuthGuard)
 export class OrderController {
     constructor(
         private readonly orderService: OrderService
