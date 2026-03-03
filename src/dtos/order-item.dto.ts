@@ -1,6 +1,6 @@
 import { IsInt, IsNumber, Min } from "class-validator";
 
-export class CreateOrderItemDto {
+export class OrderItemDto {
   @IsInt()
   product_id: number;
 

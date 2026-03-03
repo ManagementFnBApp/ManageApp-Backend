@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
-import { CreateOrderDto, OrderResponseDto, UpdateOrderDto, ViewOrderDto } from "src/dtos/oder.dto";
+import { OrderDto, OrderResponseDto, ViewOrderDto } from "src/dtos/oder.dto";
 import { OrderStatus } from "src/global/globalEnum";
 import { ProductService } from "../products/product.service";
 
@@ -11,7 +11,7 @@ export class OrderService {
         private productsService: ProductService
     ) { }
 
-    async createOrder(data: CreateOrderDto, user_id: number): Promise<any> {
+    async createOrder(data: OrderDto, user_id: number): Promise<any> {
         const { order_items, ...orderInfo } = data;
 
         // 1. Lấy danh sách ID sản phẩm để kiểm tra
@@ -40,7 +40,7 @@ export class OrderService {
                     completed_at: null,
                     cancelled_at: null,
                     order_items: {
-                        create: order_items, 
+                        create: order_items,
                     },
                 },
                 include: {
@@ -64,24 +64,67 @@ export class OrderService {
         };
     }
 
-    async updateOrder(id: number, data: UpdateOrderDto): Promise<OrderResponseDto> {
-        const existingOrder = await this.prisma.orders.findUnique({
-            where: { id: Number(id) }
-        });
-        const order = await this.prisma.orders.update({
-            where: { id: Number(id) },
-            data: {
-                shift_id: data.shiftId,
-                user_id: data.userId,
-                customer_id: data.customerId,
-                total_amount: data.totalAmount,
-                order_status: OrderStatus.PENDING,
-                notes: data.note || null,
-                completed_at: existingOrder?.completed_at || null,
-                cancelled_at: existingOrder?.cancelled_at || null
+    async updateOrder(id: number, data: OrderDto, userId: number): Promise<any> {
+        const { order_items, ...orderInfo } = data;
+
+        const order = await this.prisma.$transaction(async (prismaTx) => {
+            const existingOrder = await prismaTx.orders.findUnique({
+                where: { id: Number(id) }
+            });
+
+            // Validate that all products exist
+            const productIds = order_items.map(item => item.product_id);
+            const existingProducts = await prismaTx.product.findMany({
+                where: {
+                    id: { in: productIds },
+                },
+                select: { id: true },
+            });
+
+            if (existingProducts.length !== productIds.length) {
+                throw new Error("One or more products do not exist");
             }
+
+            // Delete existing order items
+            await prismaTx.orderItem.deleteMany({
+                where: { order_id: Number(id) }
+            });
+
+            // Update order and create new order items
+            return prismaTx.orders.update({
+                where: { id: Number(id) },
+                data: {
+                    shift_id: orderInfo.shiftId,
+                    user_id: userId,
+                    customer_id: orderInfo.customerId,
+                    total_amount: orderInfo.totalAmount,
+                    order_status: OrderStatus.PENDING,
+                    notes: orderInfo.note || null,
+                    completed_at: existingOrder?.completed_at || null,
+                    cancelled_at: existingOrder?.cancelled_at || null,
+                    order_items: {
+                        create: order_items,
+                    }
+                },
+                include: {
+                    order_items: {
+                        include: {
+                            product: {
+                                select: { product_name: true }
+                            },
+                        },
+                    },
+                },
+            });
         });
-        return this.transformToDto(order);
+
+        return {
+            id: order.id,
+            items: order.order_items.map(item => ({
+                product_name: item.product.product_name,
+                quantity: item.quantity,
+            })),
+        };
     }
 
     async completeOrder(id: number): Promise<OrderResponseDto> {

@@ -1,6 +1,6 @@
 import { Body, Controller, Param, Post, Put } from "@nestjs/common";
 import { OrderService } from "./order.service";
-import { CreateOrderDto, OrderResponseDto, UpdateOrderDto, ViewOrderDto } from "src/dtos/oder.dto";
+import { OrderDto, OrderResponseDto, ViewOrderDto } from "src/dtos/oder.dto";
 import { ResponseData, ResponseType } from "src/global/globalResponse";
 import { HttpMessage, HttpStatus, Role } from "src/global/globalEnum";
 import { ApiTags } from "@nestjs/swagger";
@@ -15,16 +15,17 @@ export class OrderController {
 
     @Roles(Role.STAFF, Role.SHOPOWNER)
     @Post()
-    async createOrder(@Body() createOrderDto: CreateOrderDto, @GetUser('id') userId: number): Promise<ResponseType<any>> {
+    async createOrder(@Body() createOrderDto: OrderDto, @GetUser('id') userId: number): Promise<ResponseType<any>> {
         return new ResponseData( await this.orderService.createOrder(createOrderDto, userId), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 
     @Put(':id')
     async updateOrder(
         @Param('id') id: number,
-        @Body() updateOrderDto: UpdateOrderDto
+        @Body() updateOrderDto: OrderDto,
+        @GetUser('id') userId: number
     ): Promise<ResponseType<OrderResponseDto>> {
-        return new ResponseData( await this.orderService.updateOrder(id, updateOrderDto), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+        return new ResponseData( await this.orderService.updateOrder(id, updateOrderDto, userId), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 
     @Public()
