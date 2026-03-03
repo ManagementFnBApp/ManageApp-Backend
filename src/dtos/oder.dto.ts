@@ -1,8 +1,8 @@
 import { IsArray, IsInt, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
-import { CreateOrderItemDto } from "./order-item.dto";
+import { OrderItemDto } from "./order-item.dto";
 import { Type } from "class-transformer";
 
-export class CreateOrderDto {
+export class OrderDto {
     @IsOptional()
     @IsInt()
     customerId?: number;
@@ -19,16 +19,8 @@ export class CreateOrderDto {
 
     @IsArray()
     @ValidateNested({ each: true })
-    @Type(() => CreateOrderItemDto)
-    order_items: CreateOrderItemDto[];
-}
-
-export class UpdateOrderDto {
-    customerId?: number;
-    userId?: number;
-    shiftId?: number;
-    note?: string;
-    totalAmount?: number;
+    @Type(() => OrderItemDto)
+    order_items: OrderItemDto[];
 }
 
 export class ViewOrderDto {

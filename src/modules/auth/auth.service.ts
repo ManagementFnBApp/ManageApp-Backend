@@ -56,7 +56,7 @@ export class AuthService {
             return { message: "If user was existed, reset token was sent" }
         }
         const token = await this.jwtService.sign(
-            { sub: user.user_id },
+            { id: user.user_id },
             { expiresIn: '30m' }
 
         )
@@ -71,15 +71,15 @@ export class AuthService {
         token: string,
         newPassword: string
     ): Promise<{ message: string }> {
-        let payload: { sub: number };
+        let payload: { id: number };
 
         try {
-            payload = this.jwtService.verify<{ sub: number }>(token);
+            payload = this.jwtService.verify<{ id: number }>(token);
         } catch {
             throw new BadRequestException('Invalid or expired token');
         }
 
-        await this.userService.updatePassword(payload.sub, newPassword);
+        await this.userService.updatePassword(payload.id, newPassword);
 
         return {
             message: 'Password updated successfully. Please login again.',
