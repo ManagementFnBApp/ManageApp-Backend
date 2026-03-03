@@ -19,6 +19,7 @@ import { ProfileModule } from './modules/profiles/profile.module';
 import { SubscriptionModule } from './modules/subscriptions/subscription.module';
 import { OrderModule } from './modules/orders/order.module';
 import { OrderItemModule } from './modules/order_items/order-item.module';
+import { CustomerModule } from './modules/customers/customer.module';
 
 @Module({
   imports: [
@@ -46,7 +47,8 @@ import { OrderItemModule } from './modules/order_items/order-item.module';
     ProfileModule,
     SubscriptionModule,
     OrderModule,
-    OrderItemModule
+    OrderItemModule,
+    CustomerModule
   ],
   controllers: [AppController],
   providers: [
