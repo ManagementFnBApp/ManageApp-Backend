@@ -3,6 +3,8 @@ import { CustomerService } from "./customer.service";
 import { CreateCustomerDto, UpdateCustomerDto, CustomerResponseDto } from "src/dtos/customer.dto";
 import { AuthGuard } from "../auth/guard/auth.guard";
 import { GetUser } from "src/decorators/decorators";
+import { ResponseData, ResponseType } from "src/global/globalResponse";
+import { HttpMessage, HttpStatus } from "src/global/globalEnum";
 
 @Controller('customers')
 @UseGuards(AuthGuard)
@@ -25,8 +27,13 @@ export class CustomerController {
     }
 
     @Get(':phone')
-    async getCustomerByPhone(@Param('phone') phone: string, @GetUser('shop_id') shop_id: number): Promise<CustomerResponseDto> {
-        return this.customerService.getCustomerByPhone(phone, shop_id);
+    async getCustomerByPhone(@Param('phone') phone: string, @GetUser('shop_id') shop_id: number): Promise<ResponseType<CustomerResponseDto>> {
+        try{
+            return new ResponseData<CustomerResponseDto>(await this.customerService.getCustomerByPhone(phone, shop_id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+        } catch (error) {
+            return new ResponseData<CustomerResponseDto>(null, HttpStatus.ERROR, error.message);
+        }
+        
     }
 
     @Put(':id')
@@ -34,8 +41,8 @@ export class CustomerController {
         @Param('id') id: number,
         @Body() updateCustomerDto: UpdateCustomerDto,
         @GetUser('shop_id') shop_id: number
-    ): Promise<CustomerResponseDto> {
-        return this.customerService.updateCustomer(id, updateCustomerDto, shop_id);
+    ): Promise<ResponseType<CustomerResponseDto>> {
+        return new ResponseData(await this.customerService.updateCustomer(id, updateCustomerDto, shop_id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 
     @Delete(':id')
