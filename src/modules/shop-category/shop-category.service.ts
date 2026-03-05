@@ -1,20 +1,33 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "db/prisma.service";
-import { ShopCategoryDto } from "src/dtos/shop-category.dto";
+import { CreateShopCategoryDto, ShopCategoryWithCategoryDto } from "src/dtos/shop-category.dto";
 
 @Injectable()
 export class ShopCategoryService {
     constructor(
-        private  readonly prisma: PrismaService
-    ) {}
+        private readonly prisma: PrismaService
+    ) { }
 
-    async create(body: ShopCategoryDto): Promise<ShopCategoryDto> {
-        const shopCategory = await this.prisma.shopCategory.create({
-            data: {
-                shop_id: body.shop_id,
-                category_id: body.category_id
+    async create(body: CreateShopCategoryDto, shop_id: number): Promise<boolean> {
+        const result = await this.prisma.shopCategory.createMany({
+            data: body.category_id.map(categoryId => ({
+                shop_id: shop_id,
+                category_id: categoryId
+            })),
+            skipDuplicates: true
+        });
+        return result.count > 0;
+    }
+
+    async getCategoriesByShopId(shopId: number): Promise<ShopCategoryWithCategoryDto[]> {
+        const shopCategories = await this.prisma.shopCategory.findMany({
+            where: {
+                shop_id: shopId
+            },
+            include: {
+                category: true
             }
         })
-        return shopCategory;
+        return shopCategories;
     }
 }

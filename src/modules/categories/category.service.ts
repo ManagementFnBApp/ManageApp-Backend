@@ -8,6 +8,18 @@ export class CategoryService {
         private readonly prisma: PrismaService
     ) { }
 
+    async getAll(): Promise<ResponseCategoryDto[]> {
+        return await this.prisma.category.findMany();
+    }
+
+    async getById(id: number): Promise<ResponseCategoryDto | null> {
+        return await this.prisma.category.findUnique({
+            where: {
+                id
+            }
+        });
+    }
+
     async createCategory(body: AdminCreateCategoryDto): Promise<ResponseCategoryDto> {
         const category = await this.prisma.category.create({
             data: {
