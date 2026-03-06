@@ -120,7 +120,7 @@ export class EmailService {
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
               <p style="font-size: 13px; color: #666;">
                 Nếu bạn cần hỗ trợ hoặc có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi qua email 
-                <a href="mailto:baanhnguyennn@gmail.com" style="color: #007bff;">baanhnguyennn@gmail.com</a>
+                <a href="mailto:lumioviet@gmail.com" style="color: #007bff;">lumioviet@gmail.com</a>
               </p>
             </div>
           </div>
@@ -140,6 +140,71 @@ export class EmailService {
     } catch (error) {
       console.error('❌ Lỗi khi gửi email thông báo subscription expired:', error);
       // Không throw error để không làm gián đoạn cron job
+    }
+  }
+
+  async sendVerificationCode(
+    toEmail: string,
+    code: string,
+  ): Promise<void> {
+    const mailOptions = {
+      from: this.configService.get<string>('EMAIL_USER'),
+      to: toEmail,
+      subject: 'Mã xác thực',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 10px;">
+          <div style="background-color: #4CAF50; color: white; padding: 15px; border-radius: 5px; text-align: center;">
+            <h2 style="margin: 0;">🔐 Mã Xác Thực</h2>
+          </div>
+          
+          <div style="padding: 20px;">
+            <p style="font-size: 16px;">Xin chào,</p>
+            
+            <p style="font-size: 14px; line-height: 1.6; color: #666;">
+              Bạn đã yêu cầu mã xác thực. Vui lòng sử dụng mã bên dưới để hoàn tất quá trình xác thực:
+            </p>
+            
+            <div style="background-color: #f5f5f5; padding: 30px; border-radius: 10px; text-align: center; margin: 30px 0;">
+              <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">Mã xác thực của bạn:</p>
+              <div style="font-size: 36px; font-weight: bold; color: #4CAF50; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                ${code}
+              </div>
+            </div>
+            
+            <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #856404; font-size: 13px;">
+                <strong>⚠️ Lưu ý:</strong><br>
+                • Mã này sẽ hết hạn sau <strong>10 phút</strong><br>
+                • Không chia sẻ mã này với bất kỳ ai<br>
+                • Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email
+              </p>
+            </div>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+              <p style="font-size: 13px; color: #666;">
+                Nếu bạn gặp vấn đề hoặc cần hỗ trợ, vui lòng liên hệ 
+                <a href="mailto:lumioviet@gmail.com" style="color: #007bff;">lumioviet@gmail.com</a>
+              </p>
+            </div>
+          </div>
+          
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+          
+          <p style="color: #999; font-size: 11px; text-align: center;">
+            Email này được gửi tự động từ hệ thống. Vui lòng không trả lời email này.
+          </p>
+        </div>
+      `,
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      console.log(`📧 Email mã xác thực đã được gửi đến ${toEmail}`);
+    } catch (error) {
+      console.error('❌ Lỗi khi gửi email mã xác thực:', error);
+      throw new InternalServerErrorException(
+        'Không thể gửi email mã xác thực. Vui lòng thử lại sau.',
+      );
     }
   }
 }
