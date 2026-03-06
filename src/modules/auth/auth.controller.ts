@@ -3,7 +3,7 @@ import { AuthService } from "./auth.service";
 import { AuthPermission, LoginDto, LoginResponseDto } from "src/dtos/login.dto";
 import { ApiTags } from "@nestjs/swagger";
 import { RegisterDto } from "../../dtos/register.dto";
-import { ForgotPasswordDto } from "../../dtos/forgot-password.dto";
+import { ForgotPasswordDto, VerifyOTPDto } from "../../dtos/forgot-password.dto";
 import { ResetPasswordDto } from "../../dtos/reset-password.dto";
 import { HttpMessage, HttpStatus } from "src/global/globalEnum";
 import { ResponseData, ResponseType } from "src/global/globalResponse";
@@ -31,16 +31,25 @@ export class AuthController {
 
     @Public()
     @Post('forgot-password')
-    async forgotPassword(@Body() dto: ForgotPasswordDto) {
-        return this.authService.forgotPassword(dto.email);
+    async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<ResponseType<{ message: string }>> {
+        try {
+            return new ResponseData(await this.authService.forgotPassword(dto.email), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+        } catch (error) {
+            return new ResponseData(error, HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+        }
     }
 
     @Public()
     @Post('reset-password')
-    async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
+    async resetPassword(@Body() dto: ResetPasswordDto): Promise<ResponseType<{ message: string }>> {
         await this.authService.resetPassword(dto.token, dto.newPassword);
-        return { message: 'Password reset successfully' };
+        return new ResponseData({ message: 'Password reset successfully' }, HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     }
 
-    
+    @Public()
+    @Post('verify-otp')
+    async verifyOTP(@Body() body: VerifyOTPDto): Promise<ResponseType<{ message: string }>> {
+        await this.authService.verifyUser(body);
+        return new ResponseData({ message: 'OTP verified successfully' }, HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    }
 }

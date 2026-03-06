@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
-import { AuthPermission, AuthResponseDto, LoginDto, LoginResponseDto } from "src/dtos/login.dto";
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { AuthPermission, LoginDto } from "src/dtos/login.dto";
 import { UserService } from "../users/user.service";
 import { JwtService } from "@nestjs/jwt";
 import { RegisterDto } from "../../dtos/register.dto";
@@ -7,6 +7,8 @@ import { UserResponseDto } from "../../dtos/user.dto";
 import * as bcrypt from 'bcrypt'
 import { getJwtExpiresIn } from "src/config/jwt.config";
 import { ConfigService } from "@nestjs/config";
+import { EmailService } from "../email/email.service";
+import { VerifyOTPDto } from "src/dtos/forgot-password.dto";
 
 @Injectable()
 export class AuthService {
@@ -14,7 +16,15 @@ export class AuthService {
         private userService: UserService,
         private jwtService: JwtService,
         private configService: ConfigService,
+        private readonly emailService: EmailService
     ) { }
+
+    private readonly temporaryUsers: Map<string, string> = new Map();
+    private readonly codeExpiration: Map<string, Date> = new Map();
+
+    private generateRandomCode(): string {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    }
 
     async login({ username, password }: LoginDto): Promise<AuthPermission> {
         const user = await this.userService.getUserByUsername(username);
@@ -50,19 +60,18 @@ export class AuthService {
     }
 
     //FORGOT-PASSWORD
-    async forgotPassword(email: string): Promise<{ message: string, token?: string }> {
+    async forgotPassword(email: string): Promise<{ message: string }> {
         const user = await this.userService.getUserByEmail(email);
         if (!user) {
-            return { message: "If user was existed, reset token was sent" }
+            throw new NotFoundException({ message: "Email not found" });
         }
-        const token = await this.jwtService.sign(
-            { id: user.user_id },
-            { expiresIn: '30m' }
+        const verificationCode = this.generateRandomCode();
+        this.temporaryUsers.set(verificationCode, user.email);
+        this.codeExpiration.set(verificationCode, new Date(Date.now() + 10 * 60 * 1000));
 
-        )
+        await this.sendVerificationCode(email, verificationCode);
         return {
-            message: "Reset token generate",
-            token
+            message: "Verification code has sent to email",
         }
     }
 
@@ -86,5 +95,33 @@ export class AuthService {
         };
     }
 
+    async verifyUser(body: VerifyOTPDto): Promise<{ message: string }> {
+        const expirationDate = this.codeExpiration.get(body.otp);
+        
+        if (!expirationDate) {
+            return { message: "Verification code is invalid" };
+        }
+        
+        if (Date.now() > expirationDate.getTime()) {
+            return { message: "Verification code expired" };
+        }
 
+        const email = this.temporaryUsers.get(body.otp)
+        if (email) {
+            
+        }
+        
+        return { message: "Invalid verification code" };
+    }
+
+    async sendVerificationCode(email: string, verificationCode: string): Promise<void> {
+        try {
+            await this.emailService.sendVerificationCode(email, verificationCode);
+            console.log(`Verification code sent to ${email}`);
+        }
+        catch (error) {
+            console.error(`Error sending verification code to ${email}:`, error);
+            throw new InternalServerErrorException('Failed to send verification code');
+        }
+    }
 }
