@@ -64,7 +64,7 @@ export class UserController {
         @Body() dto: CreateManagedUserDto,
         @Request() req: any,
     ): Promise<ResponseType<UserResponseDto>> {
-        const userId = req.user?.sub || req.user?.userId;
+        const userId = req.user?.id || req.user?.userId;
         
         if (!userId) {
             throw new UnauthorizedException('Không tìm thấy user_id vui lòng đăng nhập lại');

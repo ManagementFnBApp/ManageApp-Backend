@@ -1,8 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { PrismaService } from "../../../prisma/prisma.service";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { OrderDto, OrderResponseDto, ViewOrderDto } from "src/dtos/oder.dto";
 import { OrderStatus } from "src/global/globalEnum";
 import { ProductService } from "../products/product.service";
+import { PrismaService } from "db/prisma.service";
 const POINTS_PER_VND = 10_000;
 
 @Injectable()
@@ -158,7 +158,7 @@ export class OrderService {
             }
 
             return updatedOrder;
-        });
+        }, { timeout: 30000, maxWait: 30000 });
 
         return this.transformToDto(order);
     }

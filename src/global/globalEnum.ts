@@ -21,7 +21,3 @@ export enum OrderStatus {
   CANCELLED = 'CANCELLED',
 }
 
-export enum ShiftStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-}

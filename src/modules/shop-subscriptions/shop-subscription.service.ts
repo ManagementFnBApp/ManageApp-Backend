@@ -1,5 +1,4 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
 import {
   CreateSubscriptionPaymentDto,
   SubscriptionPaymentResponseDto,
@@ -8,6 +7,7 @@ import {
 } from '../../dtos/subscription.dto';
 import { RoleService } from '../roles/role.service';
 import { EmailService } from '../email/email.service';
+import { PrismaService } from 'db/prisma.service';
 
 @Injectable()
 export class ShopSubscriptionService {
@@ -15,7 +15,7 @@ export class ShopSubscriptionService {
     private prisma: PrismaService,
     private roleService: RoleService,
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   // ==================== SHOP SUBSCRIPTION METHODS ====================
 
@@ -82,7 +82,7 @@ export class ShopSubscriptionService {
       const now = new Date();
       const endDate = new Date(existingExpiredShop.end_date || new Date());
       const daysExpired = Math.floor((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       throw new BadRequestException(
         `Bạn không thể đăng ký shop mới vì đang có shop "${existingExpiredShop.shop.shop_name}" (ID: ${existingExpiredShop.shop_id}) đã hết hạn ${daysExpired} ngày trước. ` +
         `Shop này sẽ bị vô hiệu hóa vĩnh viễn sau ${14 - daysExpired} ngày. ` +
@@ -308,19 +308,14 @@ export class ShopSubscriptionService {
         // Không xóa để còn tính doanh thu và audit trail
 
         // 3. Xóa các dữ liệu liên quan đến shop
-        // - Xóa shift_staffs
-        const shifts = await this.prisma.shift.findMany({
+        // - Xóa shift_users của shop
+        await this.prisma.shiftUser.deleteMany({
           where: { shop_id: shopId },
         });
-        for (const shift of shifts) {
-          await this.prisma.shiftStaff.deleteMany({
-            where: { shift_id: shift.id },
-          });
-        }
 
         // - Xóa order_items và payments của orders
         const orders = await this.prisma.orders.findMany({
-          where: { shift: { shop_id: shopId } },
+          where: { user: { shop_id: shopId } },
         });
         for (const order of orders) {
           await this.prisma.orderItem.deleteMany({
@@ -333,13 +328,10 @@ export class ShopSubscriptionService {
 
         // - Xóa orders
         await this.prisma.orders.deleteMany({
-          where: { shift: { shop_id: shopId } },
+          where: { user: { shop_id: shopId } },
         });
 
-        // - Xóa shifts
-        await this.prisma.shift.deleteMany({
-          where: { shop_id: shopId },
-        });
+        // - Xóa shifts (chỉ có shift_users, shift templates là global)
 
         // - Xóa merchandise redemptions
         await this.prisma.merchandiseRedemption.deleteMany({
@@ -408,7 +400,7 @@ export class ShopSubscriptionService {
         // Giữ lại để không vi phạm foreign key với shop_subscription và payments
         await this.prisma.shop.update({
           where: { id: shopId },
-          data: { 
+          data: {
             is_active: false,
             shop_name: `[DELETED] ${shop.shop_name}`, // Đánh dấu đã xóa
           },
@@ -754,10 +746,10 @@ export class ShopSubscriptionService {
       is_expired: shopSub.is_expired,
       subscription: shopSub.subscription
         ? {
-            package_code: shopSub.subscription.package_code,
-            price: parseFloat(shopSub.subscription.price),
-            billing_cycle: shopSub.subscription.billing_cycle,
-          }
+          package_code: shopSub.subscription.package_code,
+          price: parseFloat(shopSub.subscription.price),
+          billing_cycle: shopSub.subscription.billing_cycle,
+        }
         : undefined,
     };
   }
@@ -772,16 +764,16 @@ export class ShopSubscriptionService {
       payment_status: payment.payment_status,
       shop: payment.shop_subscription?.shop
         ? {
-            shop_id: payment.shop_subscription.shop.id,
-            shop_name: payment.shop_subscription.shop.shop_name,
-          }
+          shop_id: payment.shop_subscription.shop.id,
+          shop_name: payment.shop_subscription.shop.shop_name,
+        }
         : undefined,
       user: user
         ? {
-            user_id: user.id,
-            username: user.username,
-            role: user.role?.role_code || null,
-          }
+          user_id: user.id,
+          username: user.username,
+          role: user.role?.role_code || null,
+        }
         : undefined,
     };
   }

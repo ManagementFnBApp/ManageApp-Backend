@@ -1,10 +1,10 @@
 import { Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
-import { PrismaService } from "../../../prisma/prisma.service";
 import { CreateRoleDto, RoleResponseDto, UpdateRoleDto } from "../../dtos/role.dto";
+import { PrismaService } from "db/prisma.service";
 
 @Injectable()
 export class RoleService {
-    constructor(private prisma: PrismaService) {}
+    constructor(private prisma: PrismaService) { }
 
     // Lấy tất cả roles
     async getAllRoles(): Promise<RoleResponseDto[]> {
