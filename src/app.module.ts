@@ -20,6 +20,8 @@ import { SubscriptionModule } from './modules/subscriptions/subscription.module'
 import { OrderModule } from './modules/orders/order.module';
 import { OrderItemModule } from './modules/order_items/order-item.module';
 import { CustomerModule } from './modules/customers/customer.module';
+import { MerchandiseModule } from './modules/merchandises/merchandise.module';
+import { MerchandiseRedemptionModule } from './modules/merchandise-redemptions/merchandise-redemption.module';
 
 @Module({
   imports: [
@@ -48,7 +50,9 @@ import { CustomerModule } from './modules/customers/customer.module';
     SubscriptionModule,
     OrderModule,
     OrderItemModule,
-    CustomerModule
+    CustomerModule,
+    MerchandiseModule,
+    MerchandiseRedemptionModule,
   ],
   controllers: [AppController],
   providers: [

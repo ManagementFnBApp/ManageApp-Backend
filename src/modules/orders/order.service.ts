@@ -1,8 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { OrderDto, OrderResponseDto, ViewOrderDto } from "src/dtos/oder.dto";
 import { OrderStatus } from "src/global/globalEnum";
 import { ProductService } from "../products/product.service";
+const POINTS_PER_VND = 10_000;
 
 @Injectable()
 export class OrderService {
@@ -13,6 +14,14 @@ export class OrderService {
 
     async createOrder(data: OrderDto, user_id: number): Promise<any> {
         const { order_items, ...orderInfo } = data;
+
+        // Validate shift tồn tại trước khi vào transaction (tránh P2003 + P2028)
+        const shift = await this.prisma.shift.findUnique({
+            where: { id: orderInfo.shiftId },
+        });
+        if (!shift) {
+            throw new NotFoundException(`Shift with ID ${orderInfo.shiftId} not found`);
+        }
 
         // 1. Lấy danh sách ID sản phẩm để kiểm tra
         const productIds = order_items.map(item => item.product_id);
@@ -53,7 +62,7 @@ export class OrderService {
                     },
                 },
             });
-        });
+        }, { timeout: 15000 }); // tăng timeout lên 15s tránh P2028
 
         return {
             id: order.id,
@@ -128,13 +137,29 @@ export class OrderService {
     }
 
     async completeOrder(id: number): Promise<OrderResponseDto> {
-        const order = await this.prisma.orders.update({
-            where: { id: Number(id) },
-            data: {
-                order_status: OrderStatus.COMPLETED,
-                completed_at: new Date()
+        const order = await this.prisma.$transaction(async (tx) => {
+            const updatedOrder = await tx.orders.update({
+                where: { id: Number(id) },
+                data: {
+                    order_status: OrderStatus.COMPLETED,
+                    completed_at: new Date(),
+                },
+            });
+
+            // Tích điểm: chỉ khi đơn hàng có customer
+            if (updatedOrder.customer_id) {
+                const points = Math.floor(Number(updatedOrder.total_amount) / POINTS_PER_VND);
+                if (points > 0) {
+                    await tx.customer.update({
+                        where: { id: updatedOrder.customer_id },
+                        data: { loyalty_point: { increment: points } },
+                    });
+                }
             }
+
+            return updatedOrder;
         });
+
         return this.transformToDto(order);
     }
 
