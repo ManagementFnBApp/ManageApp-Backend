@@ -6,6 +6,7 @@ import { UserModule } from "../users/user.module";
 import { RoleModule } from "../roles/role.module";
 import { ConfigModule } from "@nestjs/config";
 import googleOauthConfig from "src/config/google-oauth.config";
+import { EmailModule } from "../email/email.module";
 
 @ApiTags("Auth")
 @Module({
@@ -14,6 +15,7 @@ import googleOauthConfig from "src/config/google-oauth.config";
         ConfigModule.forFeature(googleOauthConfig),
         UserModule, 
         RoleModule,
+        EmailModule
     ],
     providers: [AuthService],
     controllers: [AuthController],
