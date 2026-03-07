@@ -1,6 +1,9 @@
+import { IsArray, IsInt } from 'class-validator';
 import { ResponseCategoryDto } from './category.dto';
 
 export class CreateShopCategoryDto {
+  @IsArray()
+  @IsInt({ each: true })
   category_id: number[];
 }
 
