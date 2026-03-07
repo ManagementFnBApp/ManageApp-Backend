@@ -332,19 +332,14 @@ export class ShopSubscriptionService {
         // Không xóa để còn tính doanh thu và audit trail
 
         // 3. Xóa các dữ liệu liên quan đến shop
-        // - Xóa shift_staffs
-        const shifts = await this.prisma.shift.findMany({
+        // - Xóa shift_users của shop
+        await this.prisma.shiftUser.deleteMany({
           where: { shop_id: shopId },
         });
-        for (const shift of shifts) {
-          await this.prisma.shiftStaff.deleteMany({
-            where: { shift_id: shift.id },
-          });
-        }
 
         // - Xóa order_items và payments của orders
         const orders = await this.prisma.orders.findMany({
-          where: { shift: { shop_id: shopId } },
+          where: { user: { shop_id: shopId } },
         });
         for (const order of orders) {
           await this.prisma.orderItem.deleteMany({
@@ -357,13 +352,10 @@ export class ShopSubscriptionService {
 
         // - Xóa orders
         await this.prisma.orders.deleteMany({
-          where: { shift: { shop_id: shopId } },
+          where: { user: { shop_id: shopId } },
         });
 
-        // - Xóa shifts
-        await this.prisma.shift.deleteMany({
-          where: { shop_id: shopId },
-        });
+        // - Xóa shifts (chỉ có shift_users, shift templates là global)
 
         // - Xóa merchandise redemptions
         await this.prisma.merchandiseRedemption.deleteMany({

@@ -20,8 +20,11 @@ import { SubscriptionModule } from './modules/subscriptions/subscription.module'
 import { OrderModule } from './modules/orders/order.module';
 import { OrderItemModule } from './modules/order_items/order-item.module';
 import { CustomerModule } from './modules/customers/customer.module';
+import { MerchandiseModule } from './modules/merchandises/merchandise.module';
+import { MerchandiseRedemptionModule } from './modules/merchandise-redemptions/merchandise-redemption.module';
 import { CategoryModule } from './modules/categories/category.module';
 import { ShopCategoryModule } from './modules/shop-category/shop-category.module';
+import { ShiftModule } from './modules/shifts/shift.module';
 
 @Module({
   imports: [
@@ -51,8 +54,11 @@ import { ShopCategoryModule } from './modules/shop-category/shop-category.module
     OrderModule,
     OrderItemModule,
     CustomerModule,
+    MerchandiseModule,
+    MerchandiseRedemptionModule,
     CategoryModule,
     ShopCategoryModule,
+    ShiftModule,
   ],
   controllers: [AppController],
   providers: [
