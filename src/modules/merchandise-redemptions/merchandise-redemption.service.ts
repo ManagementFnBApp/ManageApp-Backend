@@ -75,19 +75,60 @@ export class MerchandiseRedemptionService {
         },
       });
 
-      // Trừ điểm customer
-      const updatedCustomer = await tx.customer.update({
+      // Trừ điểm customer một cách điều kiện để tránh race condition
+      const customerUpdateResult = await tx.customer.updateMany({
+        where: {
+          id: dto.customer_id,
+          shop_id,
+          loyalty_point: {
+            gte: merchandise.point_required,
+          },
+        },
+        data: {
+          loyalty_point: {
+            decrement: merchandise.point_required,
+          },
+        },
+      });
+
+      if (customerUpdateResult.count !== 1) {
+        // Có thể đã bị trừ điểm bởi transaction khác -> không còn đủ điểm
+        throw new BadRequestException(
+          `Insufficient loyalty points to redeem this merchandise`,
+        );
+      }
+
+      // Trừ tồn kho merchandise một cách điều kiện để tránh race condition
+      const merchandiseUpdateResult = await tx.merchandise.updateMany({
+        where: {
+          id: dto.merchandise_id,
+          shop_id,
+          total_quantity: {
+            gt: 0,
+          },
+        },
+        data: {
+          total_quantity: {
+            decrement: 1,
+          },
+        },
+      });
+
+      if (merchandiseUpdateResult.count !== 1) {
+        // Hết hàng do transaction khác vừa mua
+        throw new BadRequestException(
+          `Merchandise "${merchandise.merchandise_name}" is out of stock`,
+        );
+      }
+
+      // Lấy lại thông tin customer sau khi trừ điểm để trả về remaining_points
+      const updatedCustomer = await tx.customer.findUnique({
         where: { id: dto.customer_id },
-        data: { loyalty_point: { decrement: merchandise.point_required } },
       });
 
-      // Trừ tồn kho merchandise
-      await tx.merchandise.update({
-        where: { id: dto.merchandise_id },
-        data: { total_quantity: { decrement: 1 } },
-      });
+      const remaining_points = updatedCustomer?.loyalty_point ?? 0;
 
-      return { redemption, remaining_points: updatedCustomer.loyalty_point ?? 0 };
+      return { redemption, remaining_points };
     });
 
     return {
