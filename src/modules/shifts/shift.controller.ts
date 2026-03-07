@@ -9,7 +9,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ShiftService } from './shift.service';
-import { AssignShiftDto, CreateShiftDto, UpdateShiftUserDto } from 'src/dtos/shift.dto';
+import {
+  AssignShiftDto,
+  CreateShiftDto,
+  UpdateShiftUserDto,
+} from 'src/dtos/shift.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { GetUser, Public } from 'src/decorators/decorators';
 import { Roles } from 'src/decorators/decorators';
@@ -34,7 +38,11 @@ export class ShiftController {
   async createShift(@Body() dto: CreateShiftDto) {
     try {
       const data = await this.shiftService.createShift(dto);
-      return new ResponseData(data, HttpStatus.CREATED_SUCCESS, HttpMessage.SUCCESS);
+      return new ResponseData(
+        data,
+        HttpStatus.CREATED_SUCCESS,
+        HttpMessage.SUCCESS,
+      );
     } catch (error) {
       return new ResponseData(null, HttpStatus.ERROR, error.message);
     }
@@ -70,7 +78,11 @@ export class ShiftController {
   ) {
     try {
       const data = await this.shiftService.assignShiftToStaff(dto, shop_id);
-      return new ResponseData(data, HttpStatus.CREATED_SUCCESS, HttpMessage.SUCCESS);
+      return new ResponseData(
+        data,
+        HttpStatus.CREATED_SUCCESS,
+        HttpMessage.SUCCESS,
+      );
     } catch (error) {
       return new ResponseData(null, HttpStatus.ERROR, error.message);
     }

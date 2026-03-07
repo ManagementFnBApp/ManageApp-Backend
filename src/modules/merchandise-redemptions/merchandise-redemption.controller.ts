@@ -22,7 +22,11 @@ export class MerchandiseRedemptionController {
   ) {
     try {
       const data = await this.redemptionService.redeemMerchandise(dto, shop_id);
-      return new ResponseData(data, HttpStatus.CREATED_SUCCESS, HttpMessage.SUCCESS);
+      return new ResponseData(
+        data,
+        HttpStatus.CREATED_SUCCESS,
+        HttpMessage.SUCCESS,
+      );
     } catch (error) {
       return new ResponseData(null, HttpStatus.ERROR, error.message);
     }
@@ -35,7 +39,8 @@ export class MerchandiseRedemptionController {
   @Get()
   async getShopRedemptionHistory(@GetUser('shop_id') shop_id: number) {
     try {
-      const data = await this.redemptionService.getShopRedemptionHistory(shop_id);
+      const data =
+        await this.redemptionService.getShopRedemptionHistory(shop_id);
       return new ResponseData(data, HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     } catch (error) {
       return new ResponseData(null, HttpStatus.ERROR, error.message);
@@ -52,7 +57,10 @@ export class MerchandiseRedemptionController {
     @GetUser('shop_id') shop_id: number,
   ) {
     try {
-      const data = await this.redemptionService.getCustomerRedemptionHistory(id, shop_id);
+      const data = await this.redemptionService.getCustomerRedemptionHistory(
+        id,
+        shop_id,
+      );
       return new ResponseData(data, HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     } catch (error) {
       return new ResponseData(null, HttpStatus.ERROR, error.message);
