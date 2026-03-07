@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   CreateSubscriptionDto,
   UpdateSubscriptionDto,
@@ -8,17 +12,21 @@ import { PrismaService } from 'db/prisma.service';
 
 @Injectable()
 export class SubscriptionService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   // ==================== SUBSCRIPTION METHODS ====================
 
-  async createSubscription(dto: CreateSubscriptionDto): Promise<SubscriptionResponseDto> {
+  async createSubscription(
+    dto: CreateSubscriptionDto,
+  ): Promise<SubscriptionResponseDto> {
     const existed = await this.prisma.subscription.findUnique({
       where: { package_code: dto.package_code },
     });
 
     if (existed) {
-      throw new BadRequestException(`Package code ${dto.package_code} đã tồn tại`);
+      throw new BadRequestException(
+        `Package code ${dto.package_code} đã tồn tại`,
+      );
     }
 
     const subscription = await this.prisma.subscription.create({
@@ -42,7 +50,10 @@ export class SubscriptionService {
     return subscriptions.map((sub) => this.transformSubscriptionToDto(sub));
   }
 
-  async updateSubscription(id: number, dto: UpdateSubscriptionDto): Promise<SubscriptionResponseDto> {
+  async updateSubscription(
+    id: number,
+    dto: UpdateSubscriptionDto,
+  ): Promise<SubscriptionResponseDto> {
     // Kiểm tra subscription có tồn tại không
     const existingSubscription = await this.prisma.subscription.findUnique({
       where: { id: id },
@@ -53,13 +64,18 @@ export class SubscriptionService {
     }
 
     // Nếu update package_code, kiểm tra xem có trùng với subscription khác không
-    if (dto.package_code && dto.package_code !== existingSubscription.package_code) {
+    if (
+      dto.package_code &&
+      dto.package_code !== existingSubscription.package_code
+    ) {
       const duplicatePackageCode = await this.prisma.subscription.findUnique({
         where: { package_code: dto.package_code },
       });
 
       if (duplicatePackageCode) {
-        throw new BadRequestException(`Package code ${dto.package_code} đã tồn tại`);
+        throw new BadRequestException(
+          `Package code ${dto.package_code} đã tồn tại`,
+        );
       }
     }
 
@@ -97,7 +113,7 @@ export class SubscriptionService {
     // Kiểm tra xem có shop subscription nào chưa hết hạn không
     if (existingSubscription.shop_subscriptions.length > 0) {
       throw new BadRequestException(
-        `Không thể xóa subscription này vì đang có ${existingSubscription.shop_subscriptions.length} shop chưa hết hạn đang sử dụng. Vui lòng chờ các shop dùng hết hạn hoặc chuyển các shop sang gói khác trước.`
+        `Không thể xóa subscription này vì đang có ${existingSubscription.shop_subscriptions.length} shop chưa hết hạn đang sử dụng. Vui lòng chờ các shop dùng hết hạn hoặc chuyển các shop sang gói khác trước.`,
       );
     }
 
@@ -118,7 +134,10 @@ export class SubscriptionService {
 
   // ==================== MAINTENANCE METHODS (for CronJob) ====================
 
-  async deleteOldInactiveSubscriptions(): Promise<{ deleted: number; message: string }> {
+  async deleteOldInactiveSubscriptions(): Promise<{
+    deleted: number;
+    message: string;
+  }> {
     // Tìm các subscription đã bị đánh dấu xóa (is_active = false) hơn 30 ngày
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -137,7 +156,7 @@ export class SubscriptionService {
 
     // Chỉ xóa những subscription không còn shop nào sử dụng
     const safeToDelete = subscriptionsToDelete.filter(
-      (sub) => sub.shop_subscriptions.length === 0
+      (sub) => sub.shop_subscriptions.length === 0,
     );
 
     if (safeToDelete.length > 0) {
@@ -157,7 +176,9 @@ export class SubscriptionService {
   }
 
   // ==================== PRIVATE HELPER METHODS ====================
-  private transformSubscriptionToDto(subscription: any): SubscriptionResponseDto {
+  private transformSubscriptionToDto(
+    subscription: any,
+  ): SubscriptionResponseDto {
     return {
       subscription_id: subscription.id,
       package_code: subscription.package_code,

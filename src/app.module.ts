@@ -41,8 +41,8 @@ import { ShiftModule } from './modules/shifts/shift.module';
         secret: getJwtSecretKey(configService),
         signOptions: {
           expiresIn: getJwtExpiresIn(configService),
-        }
-      })
+        },
+      }),
     }),
     UserModule,
     AuthModule,
@@ -74,7 +74,7 @@ import { ShiftModule } from './modules/shifts/shift.module';
     {
       provide: APP_GUARD,
       useClass: SubscriptionExpiredGuard,
-    }
+    },
   ],
 })
-export class AppModule { }
+export class AppModule {}

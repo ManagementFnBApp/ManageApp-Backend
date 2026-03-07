@@ -9,4 +9,4 @@ import { PrismaModule } from 'db/prisma.module';
   providers: [ShopSubscriptionService],
   exports: [ShopSubscriptionService],
 })
-export class ShopSubscriptionModule { }
+export class ShopSubscriptionModule {}
