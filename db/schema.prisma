@@ -29,7 +29,6 @@ model User {
   created_at       DateTime         @default(now())
   updated_at       DateTime         @updatedAt
   inventory_traits InventoryTrait[] @relation("InventoryTraitCreator")
-  orders           Orders[]         @relation("OrderUser")
   profile          Profile?
   shift_users      ShiftUser[]      @relation("ShiftUsers")
   owner            User?            @relation("UserOwner", fields: [owner_manager_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -75,7 +74,6 @@ model Shop {
 model Shift {
   id          Int         @id @default(autoincrement())
   shift_name  String      @unique
-  orders      Orders[]
   shift_users ShiftUser[]
 
   @@map("shifts")
@@ -86,11 +84,9 @@ model ShiftUser {
   shift_id       Int
   user_id        Int
   shop_id        Int
-  start_time     DateTime
-  end_time       DateTime
-  is_active      Boolean   @default(true)
+  notes          String?
   created_at     DateTime  @default(now())
-  deactivated_at DateTime?
+  orders         Orders[]
   shift          Shift     @relation(fields: [shift_id], references: [id])
   shop           Shop      @relation(fields: [shop_id], references: [id])
   user           User      @relation("ShiftUsers", fields: [user_id], references: [id])
@@ -228,21 +224,19 @@ model MerchandiseRedemption {
 }
 
 model Orders {
-  id           Int         @id @default(autoincrement())
-  shift_id     Int
-  user_id      Int
-  customer_id  Int?
-  total_amount Decimal     @db.Decimal(10, 2)
-  order_status String
-  notes        String?
-  created_at   DateTime    @default(now())
-  completed_at DateTime?
-  cancelled_at DateTime?
-  order_items  OrderItem[]
-  customer     Customer?   @relation(fields: [customer_id], references: [id])
-  shift        Shift       @relation(fields: [shift_id], references: [id])
-  user         User        @relation("OrderUser", fields: [user_id], references: [id])
-  payments     Payment[]
+  id            Int         @id @default(autoincrement())
+  shift_user_id Int
+  customer_id   Int?
+  total_amount  Decimal     @db.Decimal(10, 2)
+  order_status  String
+  notes         String?
+  created_at    DateTime    @default(now())
+  completed_at  DateTime?
+  cancelled_at  DateTime?
+  order_items   OrderItem[]
+  customer      Customer?   @relation(fields: [customer_id], references: [id])
+  shift_user    ShiftUser   @relation(fields: [shift_user_id], references: [id])
+  payments      Payment[]
 
   @@map("orders")
 }
