@@ -4,9 +4,9 @@ import { ProductController } from './product.controller';
 import { PrismaModule } from 'db/prisma.module';
 
 @Module({
-    imports: [PrismaModule],
-    controllers: [ProductController],
-    providers: [ProductService],
-    exports: [ProductService]
+  imports: [PrismaModule],
+  controllers: [ProductController],
+  providers: [ProductService],
+  exports: [ProductService],
 })
-export class ProductModule { }
+export class ProductModule {}

@@ -136,17 +136,19 @@ export class EmailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`📧 Email thông báo subscription expired đã được gửi đến ${toEmail}`);
+      console.log(
+        `📧 Email thông báo subscription expired đã được gửi đến ${toEmail}`,
+      );
     } catch (error) {
-      console.error('❌ Lỗi khi gửi email thông báo subscription expired:', error);
+      console.error(
+        '❌ Lỗi khi gửi email thông báo subscription expired:',
+        error,
+      );
       // Không throw error để không làm gián đoạn cron job
     }
   }
 
-  async sendVerificationCode(
-    toEmail: string,
-    code: string,
-  ): Promise<void> {
+  async sendVerificationCode(toEmail: string, code: string): Promise<void> {
     const mailOptions = {
       from: this.configService.get<string>('EMAIL_USER'),
       to: toEmail,

@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   CreateSubscriptionPaymentDto,
   SubscriptionPaymentResponseDto,
@@ -15,18 +19,23 @@ export class ShopSubscriptionService {
     private prisma: PrismaService,
     private roleService: RoleService,
     private emailService: EmailService,
-  ) { }
+  ) {}
 
   // ==================== SHOP SUBSCRIPTION METHODS ====================
 
-  async createSubscriptionShop(dto: CreateSubscriptionShopDto, userId: number): Promise<SubscriptionShopResponseDto> {
+  async createSubscriptionShop(
+    dto: CreateSubscriptionShopDto,
+    userId: number,
+  ): Promise<SubscriptionShopResponseDto> {
     // Kiểm tra subscription có tồn tại không
     const subscription = await this.prisma.subscription.findUnique({
       where: { id: dto.subscription_id },
     });
 
     if (!subscription) {
-      throw new BadRequestException(`Subscription ID ${dto.subscription_id} không tồn tại`);
+      throw new BadRequestException(
+        `Subscription ID ${dto.subscription_id} không tồn tại`,
+      );
     }
 
     // Kiểm tra user có tồn tại không
@@ -54,7 +63,7 @@ export class ShopSubscriptionService {
 
     if (existingActiveShop) {
       throw new BadRequestException(
-        `Bạn đã có shop subscription đang active. Mỗi user chỉ được có 1 shop subscription active. Sub Shop ID của bạn: ${existingActiveShop.id}`
+        `Bạn đã có shop subscription đang active. Mỗi user chỉ được có 1 shop subscription active. Sub Shop ID của bạn: ${existingActiveShop.id}`,
       );
     }
 
@@ -81,12 +90,14 @@ export class ShopSubscriptionService {
       // Tính số ngày đã expired
       const now = new Date();
       const endDate = new Date(existingExpiredShop.end_date || new Date());
-      const daysExpired = Math.floor((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysExpired = Math.floor(
+        (now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
 
       throw new BadRequestException(
         `Bạn không thể đăng ký shop mới vì đang có shop "${existingExpiredShop.shop.shop_name}" (ID: ${existingExpiredShop.shop_id}) đã hết hạn ${daysExpired} ngày trước. ` +
-        `Shop này sẽ bị vô hiệu hóa vĩnh viễn sau ${14 - daysExpired} ngày. ` +
-        `Vui lòng gia hạn shop hiện tại hoặc chờ đến khi shop bị vô hiệu hóa để đăng ký shop mới.`
+          `Shop này sẽ bị vô hiệu hóa vĩnh viễn sau ${14 - daysExpired} ngày. ` +
+          `Vui lòng gia hạn shop hiện tại hoặc chờ đến khi shop bị vô hiệu hóa để đăng ký shop mới.`,
       );
     }
 
@@ -107,7 +118,10 @@ export class ShopSubscriptionService {
 
     // Tính toán thời hạn dựa vào billing_cycle của subscription
     const startDate = new Date();
-    const endDate = this.calculateEndDate(subscription.billing_cycle, startDate);
+    const endDate = this.calculateEndDate(
+      subscription.billing_cycle,
+      startDate,
+    );
 
     const shopSubscription = await this.prisma.shopSubscription.create({
       data: {
@@ -128,7 +142,10 @@ export class ShopSubscriptionService {
 
   // ==================== MAINTENANCE METHODS (for CronJob) ====================
 
-  async checkAndUpdateExpiredSubscriptions(): Promise<{ updated: number; message: string }> {
+  async checkAndUpdateExpiredSubscriptions(): Promise<{
+    updated: number;
+    message: string;
+  }> {
     // Tìm tất cả shop subscription đã hết hạn nhưng chưa được đánh dấu
     const expiredShops = await this.prisma.shopSubscription.findMany({
       where: {
@@ -164,7 +181,7 @@ export class ShopSubscriptionService {
       for (const shopSub of expiredShops) {
         // Tìm SHOPOWNER gốc (owner_manager_id = null)
         const shopOwner = shopSub.shop.users.find(
-          (u) => u.owner_manager_id === null && u.shop_id === shopSub.shop_id
+          (u) => u.owner_manager_id === null && u.shop_id === shopSub.shop_id,
         );
 
         if (shopOwner) {
@@ -195,26 +212,29 @@ export class ShopSubscriptionService {
     oneHourAgo.setHours(oneHourAgo.getHours() - 1);
 
     // Tìm các shop subscription có shop is_active = false và được tạo hơn 1 giờ trước
-    const unpaidShopSubscriptions = await this.prisma.shopSubscription.findMany({
-      where: {
-        created_at: {
-          lte: oneHourAgo, // created_at <= 1 hour ago
+    const unpaidShopSubscriptions = await this.prisma.shopSubscription.findMany(
+      {
+        where: {
+          created_at: {
+            lte: oneHourAgo, // created_at <= 1 hour ago
+          },
+          shop: {
+            is_active: false, // Shop chưa được kích hoạt
+          },
         },
-        shop: {
-          is_active: false, // Shop chưa được kích hoạt
+        include: {
+          subscription_payments: true,
+          shop: true,
         },
       },
-      include: {
-        subscription_payments: true,
-        shop: true,
-      },
-    });
+    );
 
     // Filter ra các shop không có payment success
     const shopsToDelete = unpaidShopSubscriptions.filter(
-      (shopSub) => !shopSub.subscription_payments.some(
-        (payment) => payment.payment_status === 'success'
-      )
+      (shopSub) =>
+        !shopSub.subscription_payments.some(
+          (payment) => payment.payment_status === 'success',
+        ),
     );
 
     let deletedCount = 0;
@@ -249,27 +269,31 @@ export class ShopSubscriptionService {
     };
   }
 
-  async deleteExpiredShopsAfter14Days(): Promise<{ deleted: number; message: string }> {
+  async deleteExpiredShopsAfter14Days(): Promise<{
+    deleted: number;
+    message: string;
+  }> {
     // Tìm các shop subscription đã expired hơn 14 ngày
     const fourteenDaysAgo = new Date();
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-    const expiredShopSubscriptions = await this.prisma.shopSubscription.findMany({
-      where: {
-        is_expired: true,
-        end_date: {
-          lte: fourteenDaysAgo, // end_date <= 14 days ago
-        },
-      },
-      include: {
-        shop: {
-          include: {
-            users: true, // Lấy tất cả users trong shop
+    const expiredShopSubscriptions =
+      await this.prisma.shopSubscription.findMany({
+        where: {
+          is_expired: true,
+          end_date: {
+            lte: fourteenDaysAgo, // end_date <= 14 days ago
           },
         },
-        subscription_payments: true,
-      },
-    });
+        include: {
+          shop: {
+            include: {
+              users: true, // Lấy tất cả users trong shop
+            },
+          },
+          subscription_payments: true,
+        },
+      });
 
     let deletedCount = 0;
 
@@ -280,7 +304,7 @@ export class ShopSubscriptionService {
 
         // Tìm SHOPOWNER gốc của shop này
         const shopOwner = shop.users.find(
-          (u) => u.owner_manager_id === null && u.shop_id === shopId
+          (u) => u.owner_manager_id === null && u.shop_id === shopId,
         );
 
         // 1. Xóa tất cả users có owner_manager_id trùng với SHOPOWNER (STAFF)
@@ -415,8 +439,7 @@ export class ShopSubscriptionService {
         });
 
         deletedCount++;
-      } catch (error) {
-      }
+      } catch (error) {}
     }
 
     return {
@@ -427,7 +450,10 @@ export class ShopSubscriptionService {
 
   // ==================== SUBSCRIPTION PAYMENT METHODS ====================
 
-  async createSubscriptionPayment(dto: CreateSubscriptionPaymentDto, userId: number): Promise<SubscriptionPaymentResponseDto> {
+  async createSubscriptionPayment(
+    dto: CreateSubscriptionPaymentDto,
+    userId: number,
+  ): Promise<SubscriptionPaymentResponseDto> {
     // Kiểm tra shop subscription có tồn tại không
     const shopSubscription = await this.prisma.shopSubscription.findUnique({
       where: { id: dto.sub_shop_id },
@@ -438,14 +464,18 @@ export class ShopSubscriptionService {
     });
 
     if (!shopSubscription) {
-      throw new BadRequestException(`Shop subscription ID ${dto.sub_shop_id} không tồn tại`);
+      throw new BadRequestException(
+        `Shop subscription ID ${dto.sub_shop_id} không tồn tại`,
+      );
     }
 
     // VALIDATE: Kiểm tra amount phải bằng với price của subscription
-    const subscriptionPrice = parseFloat(shopSubscription.subscription.price.toString());
+    const subscriptionPrice = parseFloat(
+      shopSubscription.subscription.price.toString(),
+    );
     if (dto.amount !== subscriptionPrice) {
       throw new BadRequestException(
-        `Số tiền thanh toán không đúng. Amount phải bằng ${subscriptionPrice} (giá gói ${shopSubscription.subscription.package_code}).`
+        `Số tiền thanh toán không đúng. Amount phải bằng ${subscriptionPrice} (giá gói ${shopSubscription.subscription.package_code}).`,
       );
     }
 
@@ -459,17 +489,18 @@ export class ShopSubscriptionService {
     }
 
     // VALIDATE: Kiểm tra xem đã có payment thành công cho shop subscription này chưa
-    const existingSuccessPayment = await this.prisma.subscriptionPayment.findFirst({
-      where: {
-        sub_shop_id: dto.sub_shop_id,
-        payment_status: 'success',
-      },
-    });
+    const existingSuccessPayment =
+      await this.prisma.subscriptionPayment.findFirst({
+        where: {
+          sub_shop_id: dto.sub_shop_id,
+          payment_status: 'success',
+        },
+      });
 
     // Nếu đã có payment thành công, không cho tạo payment mới
     if (existingSuccessPayment) {
       throw new BadRequestException(
-        `Shop subscription này đã được kích hoạt. Không thể tạo payment mới.`
+        `Shop subscription này đã được kích hoạt. Không thể tạo payment mới.`,
       );
     }
 
@@ -519,7 +550,7 @@ export class ShopSubscriptionService {
     // Kiểm tra payment có đang ở trạng thái pending không
     if (payment.payment_status !== 'pending') {
       throw new BadRequestException(
-        `Payment này đã được xử lý với status: ${payment.payment_status}. Chỉ có thể confirm payment có status là 'pending'.`
+        `Payment này đã được xử lý với status: ${payment.payment_status}. Chỉ có thể confirm payment có status là 'pending'.`,
       );
     }
 
@@ -542,7 +573,10 @@ export class ShopSubscriptionService {
     return this.transformPaymentToDto(updatedPayment, null);
   }
 
-  async renewSubscription(dto: any, userId: number): Promise<SubscriptionPaymentResponseDto> {
+  async renewSubscription(
+    dto: any,
+    userId: number,
+  ): Promise<SubscriptionPaymentResponseDto> {
     // Lấy user để biết shop_id
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -554,12 +588,16 @@ export class ShopSubscriptionService {
     }
 
     if (!user.shop_id) {
-      throw new BadRequestException(`User chưa có shop. Không thể renew subscription.`);
+      throw new BadRequestException(
+        `User chưa có shop. Không thể renew subscription.`,
+      );
     }
 
     // VALIDATE: Chỉ SHOPOWNER mới được renew
     if (user.role?.role_code !== 'SHOPOWNER') {
-      throw new BadRequestException(`Chỉ SHOPOWNER mới có quyền gia hạn subscription.`);
+      throw new BadRequestException(
+        `Chỉ SHOPOWNER mới có quyền gia hạn subscription.`,
+      );
     }
 
     // Lấy shop subscription hiện tại của shop
@@ -576,20 +614,23 @@ export class ShopSubscriptionService {
     });
 
     if (!shopSubscription) {
-      throw new NotFoundException(`Không tìm thấy subscription cho shop ID ${user.shop_id}`);
+      throw new NotFoundException(
+        `Không tìm thấy subscription cho shop ID ${user.shop_id}`,
+      );
     }
 
     // Kiểm tra xem đã có payment pending cho subscription này chưa
-    const existingPendingPayment = await this.prisma.subscriptionPayment.findFirst({
-      where: {
-        sub_shop_id: shopSubscription.id,
-        payment_status: 'pending',
-      },
-    });
+    const existingPendingPayment =
+      await this.prisma.subscriptionPayment.findFirst({
+        where: {
+          sub_shop_id: shopSubscription.id,
+          payment_status: 'pending',
+        },
+      });
 
     if (existingPendingPayment) {
       throw new BadRequestException(
-        `Đã có payment đang chờ xử lý (Payment ID: ${existingPendingPayment.id}). Vui lòng hoàn tất payment này trước khi tạo renew mới.`
+        `Đã có payment đang chờ xử lý (Payment ID: ${existingPendingPayment.id}). Vui lòng hoàn tất payment này trước khi tạo renew mới.`,
       );
     }
 
@@ -651,7 +692,9 @@ export class ShopSubscriptionService {
       });
 
       if (users.length === 0) {
-        throw new BadRequestException(`Không tìm thấy user nào cho shop ID ${shop.id}`);
+        throw new BadRequestException(
+          `Không tìm thấy user nào cho shop ID ${shop.id}`,
+        );
       }
 
       const user = users[0];
@@ -696,7 +739,10 @@ export class ShopSubscriptionService {
 
       // 2. Tính toán end_date mới dựa vào billing_cycle
       const currentEndDate = shopSubscription.end_date || new Date();
-      const newEndDate = this.calculateEndDate(shopSubscription.subscription.billing_cycle, currentEndDate);
+      const newEndDate = this.calculateEndDate(
+        shopSubscription.subscription.billing_cycle,
+        currentEndDate,
+      );
 
       // 3. Update end_date và set is_expired = false
       await this.prisma.shopSubscription.update({
@@ -716,7 +762,10 @@ export class ShopSubscriptionService {
   }
 
   // Helper: Tính toán end_date dựa vào billing_cycle
-  private calculateEndDate(billingCycle: string, startDate: Date = new Date()): Date {
+  private calculateEndDate(
+    billingCycle: string,
+    startDate: Date = new Date(),
+  ): Date {
     const endDate = new Date(startDate);
 
     switch (billingCycle.toUpperCase()) {
@@ -741,7 +790,9 @@ export class ShopSubscriptionService {
   }
 
   // Transform helpers
-  private transformShopSubscriptionToDto(shopSub: any): SubscriptionShopResponseDto {
+  private transformShopSubscriptionToDto(
+    shopSub: any,
+  ): SubscriptionShopResponseDto {
     return {
       sub_shop_id: shopSub.id,
       subscription_id: shopSub.subscription_id,
@@ -754,15 +805,18 @@ export class ShopSubscriptionService {
       is_expired: shopSub.is_expired,
       subscription: shopSub.subscription
         ? {
-          package_code: shopSub.subscription.package_code,
-          price: parseFloat(shopSub.subscription.price),
-          billing_cycle: shopSub.subscription.billing_cycle,
-        }
+            package_code: shopSub.subscription.package_code,
+            price: parseFloat(shopSub.subscription.price),
+            billing_cycle: shopSub.subscription.billing_cycle,
+          }
         : undefined,
     };
   }
 
-  private transformPaymentToDto(payment: any, user: any): SubscriptionPaymentResponseDto {
+  private transformPaymentToDto(
+    payment: any,
+    user: any,
+  ): SubscriptionPaymentResponseDto {
     return {
       sub_payment_id: payment.id,
       sub_shop_id: payment.sub_shop_id,
@@ -772,16 +826,16 @@ export class ShopSubscriptionService {
       payment_status: payment.payment_status,
       shop: payment.shop_subscription?.shop
         ? {
-          shop_id: payment.shop_subscription.shop.id,
-          shop_name: payment.shop_subscription.shop.shop_name,
-        }
+            shop_id: payment.shop_subscription.shop.id,
+            shop_name: payment.shop_subscription.shop.shop_name,
+          }
         : undefined,
       user: user
         ? {
-          user_id: user.id,
-          username: user.username,
-          role: user.role?.role_code || null,
-        }
+            user_id: user.id,
+            username: user.username,
+            role: user.role?.role_code || null,
+          }
         : undefined,
     };
   }

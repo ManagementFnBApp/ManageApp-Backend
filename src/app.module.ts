@@ -38,8 +38,8 @@ import { ShopCategoryModule } from './modules/shop-category/shop-category.module
         secret: getJwtSecretKey(configService),
         signOptions: {
           expiresIn: getJwtExpiresIn(configService),
-        }
-      })
+        },
+      }),
     }),
     UserModule,
     AuthModule,
@@ -52,7 +52,7 @@ import { ShopCategoryModule } from './modules/shop-category/shop-category.module
     OrderItemModule,
     CustomerModule,
     CategoryModule,
-    ShopCategoryModule
+    ShopCategoryModule,
   ],
   controllers: [AppController],
   providers: [
@@ -68,7 +68,7 @@ import { ShopCategoryModule } from './modules/shop-category/shop-category.module
     {
       provide: APP_GUARD,
       useClass: SubscriptionExpiredGuard,
-    }
+    },
   ],
 })
-export class AppModule { }
+export class AppModule {}

@@ -21,7 +21,8 @@ export class SubscriptionCronService {
     this.logger.log('Bắt đầu kiểm tra shop subscription đã hết hạn...');
 
     try {
-      const result = await this.shopSubscriptionService.checkAndUpdateExpiredSubscriptions();
+      const result =
+        await this.shopSubscriptionService.checkAndUpdateExpiredSubscriptions();
       this.logger.log(` ${result.message}`);
     } catch (error) {
       this.logger.error('Lỗi khi kiểm tra expired subscriptions:', error);
@@ -37,7 +38,8 @@ export class SubscriptionCronService {
     this.logger.log('🗑️  Bắt đầu xóa subscription đã inactive hơn 30 ngày...');
 
     try {
-      const result = await this.subscriptionService.deleteOldInactiveSubscriptions();
+      const result =
+        await this.subscriptionService.deleteOldInactiveSubscriptions();
       this.logger.log(` ${result.message}`);
     } catch (error) {
       this.logger.error(' Lỗi khi cleanup inactive subscriptions:', error);
@@ -71,7 +73,8 @@ export class SubscriptionCronService {
     this.logger.log('🗑️  Bắt đầu xóa các shop đã expired hơn 14 ngày...');
 
     try {
-      const result = await this.shopSubscriptionService.deleteExpiredShopsAfter14Days();
+      const result =
+        await this.shopSubscriptionService.deleteExpiredShopsAfter14Days();
       if (result.deleted > 0) {
         this.logger.log(`✅ ${result.message}`);
       } else {

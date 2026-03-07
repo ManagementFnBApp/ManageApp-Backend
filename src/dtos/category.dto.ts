@@ -1,12 +1,12 @@
-import { IsString } from "class-validator";
+import { IsString } from 'class-validator';
 
 export class AdminCreateCategoryDto {
-    @IsString()
-    category_name: string;
+  @IsString()
+  category_name: string;
 }
 
 export class ResponseCategoryDto {
-    id: number;
-    category_name: string;
-    is_active: boolean;
+  id: number;
+  category_name: string;
+  is_active: boolean;
 }
