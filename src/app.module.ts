@@ -37,7 +37,7 @@ import { ShiftModule } from './modules/shifts/shift.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       global: true,
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: getJwtSecretKey(configService),
         signOptions: {
           expiresIn: getJwtExpiresIn(configService),

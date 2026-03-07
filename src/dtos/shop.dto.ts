@@ -2,11 +2,9 @@ import {
   IsString,
   IsNotEmpty,
   IsOptional,
-  IsInt,
-  IsBoolean,
-  Min,
+  IsBoolean
 } from 'class-validator';
-import { Exclude, Expose } from 'class-transformer';
+import { Expose } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ShopResponseDto {

@@ -29,7 +29,9 @@ export class ShiftService {
       where: { shift_name: dto.shift_name },
     });
     if (existing) {
-      throw new BadRequestException(`Shift "${dto.shift_name}" already exists.`);
+      throw new BadRequestException(
+        `Shift "${dto.shift_name}" already exists.`,
+      );
     }
     const shift = await this.prisma.shift.create({
       data: { shift_name: dto.shift_name },
@@ -46,22 +48,40 @@ export class ShiftService {
   // ShiftUser — SHOPOWNER quản lý
   // ──────────────────────────────────────────
 
-  async assignShiftToStaff(dto: AssignShiftDto, shop_id: number): Promise<ShiftUserResponseDto> {
-    const shift = await this.prisma.shift.findUnique({ where: { id: dto.shift_id } });
-    if (!shift) throw new NotFoundException(`Shift template with ID ${dto.shift_id} not found.`);
+  async assignShiftToStaff(
+    dto: AssignShiftDto,
+    shop_id: number,
+  ): Promise<ShiftUserResponseDto> {
+    const shift = await this.prisma.shift.findUnique({
+      where: { id: dto.shift_id },
+    });
+    if (!shift)
+      throw new NotFoundException(
+        `Shift template with ID ${dto.shift_id} not found.`,
+      );
 
     const user = await this.prisma.user.findFirst({
       where: { id: dto.user_id, shop_id },
       select: { id: true, username: true },
     });
-    if (!user) throw new NotFoundException(`User with ID ${dto.user_id} not found in this shop.`);
+    if (!user)
+      throw new NotFoundException(
+        `User with ID ${dto.user_id} not found in this shop.`,
+      );
 
     const start = new Date(dto.start_time);
     const end = new Date(dto.end_time);
-    if (end <= start) throw new BadRequestException('end_time must be after start_time.');
+    if (end <= start)
+      throw new BadRequestException('end_time must be after start_time.');
 
     const shiftUser = await this.prisma.shiftUser.create({
-      data: { shift_id: dto.shift_id, user_id: dto.user_id, shop_id, start_time: start, end_time: end },
+      data: {
+        shift_id: dto.shift_id,
+        user_id: dto.user_id,
+        shop_id,
+        start_time: start,
+        end_time: end,
+      },
       include: {
         shift: { select: { shift_name: true } },
         user: { select: { username: true } },
@@ -82,9 +102,17 @@ export class ShiftService {
     return records.map((r) => this.transformToUserDto(r));
   }
 
-  async getStaffShiftUsers(user_id: number, shop_id: number): Promise<ShiftUserResponseDto[]> {
-    const user = await this.prisma.user.findFirst({ where: { id: Number(user_id), shop_id } });
-    if (!user) throw new NotFoundException(`User with ID ${user_id} not found in this shop.`);
+  async getStaffShiftUsers(
+    user_id: number,
+    shop_id: number,
+  ): Promise<ShiftUserResponseDto[]> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: Number(user_id), shop_id },
+    });
+    if (!user)
+      throw new NotFoundException(
+        `User with ID ${user_id} not found in this shop.`,
+      );
 
     const records = await this.prisma.shiftUser.findMany({
       where: { user_id: Number(user_id), shop_id, is_active: true },
@@ -97,13 +125,23 @@ export class ShiftService {
     return records.map((r) => this.transformToUserDto(r));
   }
 
-  async updateShiftUser(id: number, dto: UpdateShiftUserDto, shop_id: number): Promise<ShiftUserResponseDto> {
+  async updateShiftUser(
+    id: number,
+    dto: UpdateShiftUserDto,
+    shop_id: number,
+  ): Promise<ShiftUserResponseDto> {
     const existing = await this.findShiftUserInShop(id, shop_id);
-    if (!existing.is_active) throw new BadRequestException('Cannot update a deactivated shift assignment.');
+    if (!existing.is_active)
+      throw new BadRequestException(
+        'Cannot update a deactivated shift assignment.',
+      );
 
-    const start = dto.start_time ? new Date(dto.start_time) : existing.start_time;
+    const start = dto.start_time
+      ? new Date(dto.start_time)
+      : existing.start_time;
     const end = dto.end_time ? new Date(dto.end_time) : existing.end_time;
-    if (end <= start) throw new BadRequestException('end_time must be after start_time.');
+    if (end <= start)
+      throw new BadRequestException('end_time must be after start_time.');
 
     const updated = await this.prisma.shiftUser.update({
       where: { id: Number(id) },
@@ -116,9 +154,13 @@ export class ShiftService {
     return this.transformToUserDto(updated);
   }
 
-  async deactivateShiftUser(id: number, shop_id: number): Promise<ShiftUserResponseDto> {
+  async deactivateShiftUser(
+    id: number,
+    shop_id: number,
+  ): Promise<ShiftUserResponseDto> {
     const existing = await this.findShiftUserInShop(id, shop_id);
-    if (!existing.is_active) throw new BadRequestException('Shift assignment is already deactivated.');
+    if (!existing.is_active)
+      throw new BadRequestException('Shift assignment is already deactivated.');
 
     const updated = await this.prisma.shiftUser.update({
       where: { id: Number(id) },
@@ -145,7 +187,9 @@ export class ShiftService {
     });
 
     if (count > 0) {
-      this.logger.log(`[ShiftCleanup] Deleted ${count} expired shift assignments.`);
+      this.logger.log(
+        `[ShiftCleanup] Deleted ${count} expired shift assignments.`,
+      );
     }
   }
 
@@ -154,8 +198,11 @@ export class ShiftService {
   // ──────────────────────────────────────────
 
   private async findShiftUserInShop(id: number, shop_id: number) {
-    const record = await this.prisma.shiftUser.findFirst({ where: { id: Number(id), shop_id } });
-    if (!record) throw new NotFoundException(`Shift assignment with ID ${id} not found.`);
+    const record = await this.prisma.shiftUser.findFirst({
+      where: { id: Number(id), shop_id },
+    });
+    if (!record)
+      throw new NotFoundException(`Shift assignment with ID ${id} not found.`);
     return record;
   }
 

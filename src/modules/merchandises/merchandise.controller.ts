@@ -9,7 +9,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { MerchandiseService } from './merchandise.service';
-import { CreateMerchandiseDto, UpdateMerchandiseDto } from 'src/dtos/merchandise.dto';
+import {
+  CreateMerchandiseDto,
+  UpdateMerchandiseDto,
+} from 'src/dtos/merchandise.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { GetUser } from 'src/decorators/decorators';
 import { ResponseData } from 'src/global/globalResponse';
@@ -26,8 +29,15 @@ export class MerchandiseController {
     @GetUser('shop_id') shop_id: number,
   ) {
     try {
-      const data = await this.merchandiseService.createMerchandise(dto, shop_id);
-      return new ResponseData(data, HttpStatus.CREATED_SUCCESS, HttpMessage.SUCCESS);
+      const data = await this.merchandiseService.createMerchandise(
+        dto,
+        shop_id,
+      );
+      return new ResponseData(
+        data,
+        HttpStatus.CREATED_SUCCESS,
+        HttpMessage.SUCCESS,
+      );
     } catch (error) {
       return new ResponseData(null, HttpStatus.ERROR, error.message);
     }
@@ -49,7 +59,10 @@ export class MerchandiseController {
     @GetUser('shop_id') shop_id: number,
   ) {
     try {
-      const data = await this.merchandiseService.getMerchandiseById(id, shop_id);
+      const data = await this.merchandiseService.getMerchandiseById(
+        id,
+        shop_id,
+      );
       return new ResponseData(data, HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     } catch (error) {
       return new ResponseData(null, HttpStatus.ERROR, error.message);
@@ -63,7 +76,11 @@ export class MerchandiseController {
     @GetUser('shop_id') shop_id: number,
   ) {
     try {
-      const data = await this.merchandiseService.updateMerchandise(id, dto, shop_id);
+      const data = await this.merchandiseService.updateMerchandise(
+        id,
+        dto,
+        shop_id,
+      );
       return new ResponseData(data, HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     } catch (error) {
       return new ResponseData(null, HttpStatus.ERROR, error.message);

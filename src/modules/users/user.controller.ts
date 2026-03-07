@@ -32,7 +32,7 @@ import { Public, Roles } from 'src/decorators/decorators';
 @ApiBearerAuth()
 @Controller('users')
 export class UserController {
-  constructor(protected readonly userService: UserService) { }
+  constructor(protected readonly userService: UserService) {}
 
   @Roles(Role.ADMIN)
   @Get()
@@ -108,7 +108,9 @@ export class UserController {
   ): Promise<ResponseType<UserResponseDto>> {
     const userId = req.user?.sub || req.user?.userId;
     if (!userId) {
-      throw new UnauthorizedException('Không tìm thấy user_id vui lòng đăng nhập lại');
+      throw new UnauthorizedException(
+        'Không tìm thấy user_id vui lòng đăng nhập lại',
+      );
     }
 
     return new ResponseData(
