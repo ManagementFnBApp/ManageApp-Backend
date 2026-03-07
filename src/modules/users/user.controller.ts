@@ -32,7 +32,7 @@ import { Public, Roles } from 'src/decorators/decorators';
 @ApiBearerAuth()
 @Controller('users')
 export class UserController {
-  constructor(protected readonly userService: UserService) {}
+  constructor(protected readonly userService: UserService) { }
 
   @Roles(Role.ADMIN)
   @Get()
@@ -107,26 +107,8 @@ export class UserController {
     @Request() req: any,
   ): Promise<ResponseType<UserResponseDto>> {
     const userId = req.user?.sub || req.user?.userId;
-
-    @Post('managed')
-    @ApiOperation({ 
-        summary: 'SHOPOWNER t?o user m?i (SHOPOWNER ho?c STAFF) cho shop - Cần login',
-        description: 'SHOPOWNER tạo và gửi mail'
-    })
-    @ApiResponse({ status: 201, description: 'Tạo user thành công và gửi gmail' })
-    @ApiResponse({ status: 400, description: '' })
-    @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
-    async createManagedUser(
-        @Body() dto: CreateManagedUserDto,
-        @Request() req: any,
-    ): Promise<ResponseType<UserResponseDto>> {
-        const userId = req.user?.id || req.user?.userId;
-        
-        if (!userId) {
-            throw new UnauthorizedException('Không tìm thấy user_id vui lòng đăng nhập lại');
-        }
-        
-        return new ResponseData(await this.userService.createManagedUser(userId, dto), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    if (!userId) {
+      throw new UnauthorizedException('Không tìm thấy user_id vui lòng đăng nhập lại');
     }
 
     return new ResponseData(
