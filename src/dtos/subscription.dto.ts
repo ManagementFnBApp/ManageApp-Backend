@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsInt, IsDecimal, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsInt,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 // DTO cho Subscription Payment
@@ -7,7 +13,7 @@ export class CreateSubscriptionPaymentDto {
   @IsInt()
   @IsNotEmpty()
   sub_shop_id: number;
-  
+
   // userId sẽ được lấy từ token user đang login, không cần nhập
 
   @ApiProperty({ example: 'BANK_TRANSFER' })
@@ -15,9 +21,10 @@ export class CreateSubscriptionPaymentDto {
   @IsNotEmpty()
   method: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     example: 299000,
-    description: 'Số tiền thanh toán - PHẢI BẰNG với price của subscription package'
+    description:
+      'Số tiền thanh toán - PHẢI BẰNG với price của subscription package',
   })
   @IsNotEmpty()
   amount: number;
@@ -46,13 +53,13 @@ export class SubscriptionPaymentResponseDto {
   amount: number;
   created_at: Date;
   payment_status: string;
-  
+
   // Thông tin shop nếu đã tạo (khi payment success)
   shop?: {
     shop_id: number;
     shop_name: string;
   };
-  
+
   // Thông tin user
   user?: {
     user_id: number;
@@ -67,12 +74,15 @@ export class CreateSubscriptionShopDto {
   @IsInt()
   @IsNotEmpty()
   subscription_id: number;
-  
-  @ApiProperty({ example: 'My Shop Name', description: 'Tên shop mà user muốn đặt' })
+
+  @ApiProperty({
+    example: 'My Shop Name',
+    description: 'Tên shop mà user muốn đặt',
+  })
   @IsString()
   @IsNotEmpty()
   shop_name: string;
-  
+
   // userId sẽ được lấy từ token user đang login, không cần nhập
 }
 
@@ -86,7 +96,7 @@ export class SubscriptionShopResponseDto {
   created_at: Date;
   updated_at: Date;
   is_expired: boolean;
-  
+
   // Thông tin subscription package để user biết giá cần thanh toán
   subscription?: {
     package_code: string;
@@ -96,7 +106,10 @@ export class SubscriptionShopResponseDto {
 }
 
 export class ChangeSubscriptionDto {
-  @ApiProperty({ example: 2, description: 'ID của gói subscription mới muốn chuyển đến' })
+  @ApiProperty({
+    example: 2,
+    description: 'ID của gói subscription mới muốn chuyển đến',
+  })
   @IsInt()
   @IsNotEmpty()
   new_subscription_id: number;
@@ -152,7 +165,10 @@ export class UpdateSubscriptionDto {
   @IsOptional()
   features?: any;
 
-  @ApiPropertyOptional({ example: true, description: 'Trạng thái hoạt động của gói' })
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Trạng thái hoạt động của gói',
+  })
   @IsBoolean()
   @IsOptional()
   is_active?: boolean;

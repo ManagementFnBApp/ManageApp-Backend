@@ -1,4 +1,8 @@
-import { createParamDecorator, ExecutionContext, SetMetadata } from "@nestjs/common";
+import {
+  createParamDecorator,
+  ExecutionContext,
+  SetMetadata,
+} from '@nestjs/common';
 
 //Decorator for Authentication
 export const IS_PUBLIC_KEY = 'isPublic';

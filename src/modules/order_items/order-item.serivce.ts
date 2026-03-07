@@ -1,16 +1,14 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "db/prisma.service";
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'db/prisma.service';
 
 @Injectable()
 export class OrderItemService {
-    constructor(
-        private prisma: PrismaService
-    ) { }
+  constructor(private prisma: PrismaService) {}
 
-    async findByOrderId(orderId: number) {
-        return this.prisma.orderItem.findMany({
-            where: { order_id: orderId },
-            include: { product: true }
-        });
-    }
+  async findByOrderId(orderId: number) {
+    return this.prisma.orderItem.findMany({
+      where: { order_id: orderId },
+      include: { product: true },
+    });
+  }
 }

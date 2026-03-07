@@ -1,43 +1,50 @@
-import { IsArray, IsInt, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
-import { OrderItemDto } from "./order-item.dto";
-import { Type } from "class-transformer";
+import {
+  IsArray,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { OrderItemDto } from './order-item.dto';
+import { Type } from 'class-transformer';
 
 export class OrderDto {
-    @IsOptional()
-    @IsInt()
-    customerId?: number;
+  @IsOptional()
+  @IsInt()
+  customerId?: number;
 
-    @IsInt()
-    shiftId: number;
+  @IsInt()
+  shiftId: number;
 
-    @IsOptional()
-    @IsString()
-    note?: string;
+  @IsOptional()
+  @IsString()
+  note?: string;
 
-    @IsNumber()
-    totalAmount: number;
+  @IsNumber()
+  totalAmount: number;
 
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => OrderItemDto)
-    order_items: OrderItemDto[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OrderItemDto)
+  order_items: OrderItemDto[];
 }
 
 export class ViewOrderDto {
-    @IsOptional()
-    @IsString()
-    status: string;
+  @IsOptional()
+  @IsString()
+  status: string;
 }
 
 export class OrderResponseDto {
-    id: number;
-    customerId: number;
-    userId: number;
-    shiftId: number;
-    note: string;
-    totalAmount: number;
-    orderStatus: string;
-    createdAt?: string | null;
-    completedAt?: Date | null;
-    cancelledAt?: Date | null;
+  id: number;
+  customerId: number;
+  userId: number;
+  shiftId: number;
+  note: string;
+  totalAmount: number;
+  orderStatus: string;
+  createdAt?: string | null;
+  completedAt?: Date | null;
+  cancelledAt?: Date | null;
 }

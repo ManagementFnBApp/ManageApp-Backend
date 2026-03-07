@@ -1,9 +1,9 @@
-import { ConfigService } from "@nestjs/config";
+import { ConfigService } from '@nestjs/config';
 
 export const getJwtSecretKey = (configService: ConfigService): string => {
-    return configService.get<string>('JWT_SECRET_KEY') || '';
+  return configService.get<string>('JWT_SECRET_KEY') || '';
 };
 
 export const getJwtExpiresIn = (configService: ConfigService): number => {
-    return configService.get<number>('JWT_EXPIRES_IN') || 0;
+  return configService.get<number>('JWT_EXPIRES_IN') || 0;
 };

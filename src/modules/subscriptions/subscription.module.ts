@@ -12,4 +12,4 @@ import { PrismaModule } from 'db/prisma.module';
   providers: [SubscriptionService, SubscriptionCronService],
   exports: [SubscriptionService],
 })
-export class SubscriptionModule { }
+export class SubscriptionModule {}
