@@ -61,17 +61,10 @@ export class UserService {
 
     const user = await this.prisma.user.create({
       data: {
-        role_id: body.role_id || null,
-        shop_id: body.shop_id || null,
-        owner_manager_id: body.owner_manager_id || null,
         email: body.email,
         username: body.username,
         password: hashPassword,
-      },
-      include: {
-        role: true,
-        profile: true,
-      },
+      }
     });
     return this.transformToDto(user);
   }
