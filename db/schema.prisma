@@ -133,7 +133,7 @@ model Product {
   category_id     Int
   product_name    String
   image             String          @unique
-  barcode         String?
+  barcode         String?       @unique 
   description     String?
   measure_unit    String?
   import_price    Decimal         @db.Decimal(10, 2)
