@@ -39,18 +39,6 @@ export class UserResponseDto {
 
 // DTO cho việc tạo user mới
 export class CreateUserDto {
-  @IsInt()
-  @IsOptional()
-  shop_id?: number;
-
-  @IsInt()
-  @IsOptional()
-  owner_manager_id?: number;
-
-  @IsInt()
-  @IsOptional()
-  role_id?: number;
-
   @IsEmail({}, { message: 'Email không hợp lệ' })
   @IsNotEmpty({ message: 'Email không được để trống' })
   email: string;
