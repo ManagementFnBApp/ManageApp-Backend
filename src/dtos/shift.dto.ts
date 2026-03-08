@@ -1,10 +1,4 @@
-import {
-  IsDateString,
-  IsInt,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 // ==============================
 // Shift template DTOs
@@ -33,21 +27,15 @@ export class AssignShiftDto {
   @Min(1)
   user_id: number;
 
-  @IsDateString()
-  start_time: string;
-
-  @IsDateString()
-  end_time: string;
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 export class UpdateShiftUserDto {
   @IsOptional()
-  @IsDateString()
-  start_time?: string;
-
-  @IsOptional()
-  @IsDateString()
-  end_time?: string;
+  @IsString()
+  notes?: string;
 }
 
 export class ShiftUserResponseDto {
@@ -57,9 +45,6 @@ export class ShiftUserResponseDto {
   user_id: number;
   username: string;
   shop_id: number;
-  start_time: string;
-  end_time: string;
-  is_active: boolean;
+  notes: string | null;
   created_at: string;
-  deactivated_at: string | null;
 }

@@ -68,7 +68,7 @@ export class ShiftController {
 
   /**
    * POST /shifts/assign
-   * SHOPOWNER gán shift cho nhân viên kèm start_time & end_time
+   * SHOPOWNER gán shift cho nhân viên kèm notes
    */
   @Post('assign')
   @Roles(Role.SHOPOWNER)
@@ -123,7 +123,7 @@ export class ShiftController {
 
   /**
    * PUT /shifts/users/:id
-   * SHOPOWNER cập nhật start_time / end_time của 1 assignment
+   * SHOPOWNER cập nhật notes của 1 assignment
    */
   @Put('users/:id')
   @Roles(Role.SHOPOWNER)
@@ -142,7 +142,7 @@ export class ShiftController {
 
   /**
    * DELETE /shifts/users/:id
-   * SHOPOWNER hủy shift (is_active = false, không xóa ngay)
+   * SHOPOWNER xoá shift assignment
    */
   @Delete('users/:id')
   @Roles(Role.SHOPOWNER)
@@ -151,7 +151,7 @@ export class ShiftController {
     @GetUser('shop_id') shop_id: number,
   ) {
     try {
-      const data = await this.shiftService.deactivateShiftUser(id, shop_id);
+      const data = await this.shiftService.deleteShiftUser(id, shop_id);
       return new ResponseData(data, HttpStatus.SUCCESS, HttpMessage.SUCCESS);
     } catch (error) {
       return new ResponseData(null, HttpStatus.ERROR, error.message);

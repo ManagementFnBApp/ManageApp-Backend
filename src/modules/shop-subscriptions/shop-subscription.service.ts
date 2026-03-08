@@ -339,7 +339,7 @@ export class ShopSubscriptionService {
 
         // - Xóa order_items và payments của orders
         const orders = await this.prisma.orders.findMany({
-          where: { user: { shop_id: shopId } },
+          where: { shift_user: { shop_id: shopId } },
         });
         for (const order of orders) {
           await this.prisma.orderItem.deleteMany({
@@ -352,7 +352,7 @@ export class ShopSubscriptionService {
 
         // - Xóa orders
         await this.prisma.orders.deleteMany({
-          where: { user: { shop_id: shopId } },
+          where: { shift_user: { shop_id: shopId } },
         });
 
         // - Xóa shifts (chỉ có shift_users, shift templates là global)
