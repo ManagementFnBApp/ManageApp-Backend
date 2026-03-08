@@ -132,8 +132,8 @@ model Product {
   id              Int             @id @default(autoincrement())
   category_id     Int
   product_name    String
-  sku             String          @unique
-  barcode         String?
+  image             String          @unique
+  barcode         String?       @unique 
   description     String?
   measure_unit    String?
   import_price    Decimal         @db.Decimal(10, 2)
