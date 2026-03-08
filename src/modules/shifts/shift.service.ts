@@ -1,10 +1,8 @@
 ﻿import {
   BadRequestException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'db/prisma.service';
 import {
   AssignShiftDto,
@@ -16,8 +14,6 @@ import {
 
 @Injectable()
 export class ShiftService {
-  private readonly logger = new Logger(ShiftService.name);
-
   constructor(private prisma: PrismaService) {}
 
   // ──────────────────────────────────────────
@@ -69,18 +65,12 @@ export class ShiftService {
         `User with ID ${dto.user_id} not found in this shop.`,
       );
 
-    const start = new Date(dto.start_time);
-    const end = new Date(dto.end_time);
-    if (end <= start)
-      throw new BadRequestException('end_time must be after start_time.');
-
     const shiftUser = await this.prisma.shiftUser.create({
       data: {
         shift_id: dto.shift_id,
         user_id: dto.user_id,
         shop_id,
-        start_time: start,
-        end_time: end,
+        notes: dto.notes ?? null,
       },
       include: {
         shift: { select: { shift_name: true } },
@@ -92,7 +82,7 @@ export class ShiftService {
 
   async getShopShiftUsers(shop_id: number): Promise<ShiftUserResponseDto[]> {
     const records = await this.prisma.shiftUser.findMany({
-      where: { shop_id, is_active: true },
+      where: { shop_id },
       orderBy: { created_at: 'desc' },
       include: {
         shift: { select: { shift_name: true } },
@@ -115,8 +105,8 @@ export class ShiftService {
       );
 
     const records = await this.prisma.shiftUser.findMany({
-      where: { user_id: Number(user_id), shop_id, is_active: true },
-      orderBy: { start_time: 'asc' },
+      where: { user_id: Number(user_id), shop_id },
+      orderBy: { created_at: 'desc' },
       include: {
         shift: { select: { shift_name: true } },
         user: { select: { username: true } },
@@ -130,22 +120,11 @@ export class ShiftService {
     dto: UpdateShiftUserDto,
     shop_id: number,
   ): Promise<ShiftUserResponseDto> {
-    const existing = await this.findShiftUserInShop(id, shop_id);
-    if (!existing.is_active)
-      throw new BadRequestException(
-        'Cannot update a deactivated shift assignment.',
-      );
-
-    const start = dto.start_time
-      ? new Date(dto.start_time)
-      : existing.start_time;
-    const end = dto.end_time ? new Date(dto.end_time) : existing.end_time;
-    if (end <= start)
-      throw new BadRequestException('end_time must be after start_time.');
+    await this.findShiftUserInShop(id, shop_id);
 
     const updated = await this.prisma.shiftUser.update({
       where: { id: Number(id) },
-      data: { start_time: start, end_time: end },
+      data: { notes: dto.notes ?? null },
       include: {
         shift: { select: { shift_name: true } },
         user: { select: { username: true } },
@@ -154,43 +133,13 @@ export class ShiftService {
     return this.transformToUserDto(updated);
   }
 
-  async deactivateShiftUser(
+  async deleteShiftUser(
     id: number,
     shop_id: number,
-  ): Promise<ShiftUserResponseDto> {
-    const existing = await this.findShiftUserInShop(id, shop_id);
-    if (!existing.is_active)
-      throw new BadRequestException('Shift assignment is already deactivated.');
-
-    const updated = await this.prisma.shiftUser.update({
-      where: { id: Number(id) },
-      data: { is_active: false, deactivated_at: new Date() },
-      include: {
-        shift: { select: { shift_name: true } },
-        user: { select: { username: true } },
-      },
-    });
-    return this.transformToUserDto(updated);
-  }
-
-  // ──────────────────────────────────────────
-  // Cron: Tự động xóa ShiftUser is_active=false sau 30 ngày
-  // ──────────────────────────────────────────
-
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async cleanupExpiredShiftUsers() {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 30);
-
-    const { count } = await this.prisma.shiftUser.deleteMany({
-      where: { is_active: false, deactivated_at: { lte: cutoff } },
-    });
-
-    if (count > 0) {
-      this.logger.log(
-        `[ShiftCleanup] Deleted ${count} expired shift assignments.`,
-      );
-    }
+  ): Promise<{ message: string }> {
+    await this.findShiftUserInShop(id, shop_id);
+    await this.prisma.shiftUser.delete({ where: { id: Number(id) } });
+    return { message: `Shift assignment ${id} deleted successfully.` };
   }
 
   // ──────────────────────────────────────────
@@ -214,11 +163,8 @@ export class ShiftService {
       user_id: record.user_id,
       username: record.user?.username ?? '',
       shop_id: record.shop_id,
-      start_time: record.start_time?.toISOString(),
-      end_time: record.end_time?.toISOString(),
-      is_active: record.is_active,
+      notes: record.notes ?? null,
       created_at: record.created_at?.toISOString(),
-      deactivated_at: record.deactivated_at?.toISOString() ?? null,
     };
   }
 }

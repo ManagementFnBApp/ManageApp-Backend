@@ -3,7 +3,7 @@ import { OrderDto, OrderResponseDto, ViewOrderDto } from 'src/dtos/oder.dto';
 import { OrderStatus } from 'src/global/globalEnum';
 import { ProductService } from '../products/product.service';
 import { PrismaService } from 'db/prisma.service';
-
+const POINTS_PER_VND = 10_000;
 @Injectable()
 export class OrderService {
   constructor(
@@ -11,7 +11,7 @@ export class OrderService {
     private productsService: ProductService,
   ) {}
 
-  async createOrder(data: OrderDto, user_id: number): Promise<any> {
+  async createOrder(data: OrderDto, _user_id: number): Promise<any> {
     const { order_items, ...orderInfo } = data;
 
     // 1. Lấy danh sách ID sản phẩm để kiểm tra
@@ -32,8 +32,7 @@ export class OrderService {
       return prismaTx.orders.create({
         data: {
           customer_id: orderInfo.customerId,
-          user_id: user_id,
-          shift_id: orderInfo.shiftId,
+          shift_user_id: orderInfo.shiftUserId,
           total_amount: orderInfo.totalAmount,
           order_status: OrderStatus.PENDING,
           notes: orderInfo.note || null,
@@ -64,7 +63,7 @@ export class OrderService {
     };
   }
 
-  async updateOrder(id: number, data: OrderDto, userId: number): Promise<any> {
+  async updateOrder(id: number, data: OrderDto, _userId: number): Promise<any> {
     const { order_items, ...orderInfo } = data;
 
     const order = await this.prisma.$transaction(async (prismaTx) => {
@@ -94,8 +93,7 @@ export class OrderService {
       return prismaTx.orders.update({
         where: { id: Number(id) },
         data: {
-          shift_id: orderInfo.shiftId,
-          user_id: userId,
+          shift_user_id: orderInfo.shiftUserId,
           customer_id: orderInfo.customerId,
           total_amount: orderInfo.totalAmount,
           order_status: OrderStatus.PENDING,
@@ -128,13 +126,28 @@ export class OrderService {
   }
 
   async completeOrder(id: number): Promise<OrderResponseDto> {
-    const order = await this.prisma.orders.update({
-      where: { id: Number(id) },
-      data: {
-        order_status: OrderStatus.COMPLETED,
-        completed_at: new Date(),
-      },
-    });
+        const order = await this.prisma.$transaction(async (tx) => {
+            const updatedOrder = await tx.orders.update({
+                where: { id: Number(id) },
+                data: {
+                    order_status: OrderStatus.COMPLETED,
+                    completed_at: new Date(),
+                },
+            });
+
+            // Tích điểm: chỉ khi đơn hàng có customer
+            if (updatedOrder.customer_id) {
+                const points = Math.floor(Number(updatedOrder.total_amount) / POINTS_PER_VND);
+                if (points > 0) {
+                    await tx.customer.update({
+                        where: { id: updatedOrder.customer_id },
+                        data: { loyalty_point: { increment: points } },
+                    });
+                }
+            }
+
+            return updatedOrder;
+        }, { timeout: 30000, maxWait: 30000 });
     return this.transformToDto(order);
   }
 
@@ -150,9 +163,16 @@ export class OrderService {
   }
 
   async getAllOrders(dto: ViewOrderDto, user_id: number): Promise<any[]> {
+    // Lấy tất cả shift_user_id thuộc về user này
+    const shiftUsers = await this.prisma.shiftUser.findMany({
+      where: { user_id },
+      select: { id: true },
+    });
+    const shiftUserIds = shiftUsers.map((su) => su.id);
+
     const orders = await this.prisma.orders.findMany({
       where: {
-        user_id: user_id,
+        shift_user_id: { in: shiftUserIds },
         ...(dto.status ? { order_status: dto.status } : {}),
       },
       include: {
@@ -178,8 +198,7 @@ export class OrderService {
     return {
       id: order.id,
       customerId: order.customer_id,
-      userId: order.user_id,
-      shiftId: order.shift_id,
+      shiftUserId: order.shift_user_id,
       note: order.notes || null,
       totalAmount: Number(order.total_amount),
       orderStatus: order.order_status,

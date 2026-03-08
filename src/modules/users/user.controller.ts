@@ -71,8 +71,8 @@ export class UserController {
     );
   }
 
-  @Roles(Role.ADMIN)
   @Put(':id/role')
+  @Public()
   @ApiOperation({
     summary: 'Gán role ADMIN cho user - Không cần token (Public)',
   })
@@ -106,7 +106,7 @@ export class UserController {
     @Body() dto: CreateManagedUserDto,
     @Request() req: any,
   ): Promise<ResponseType<UserResponseDto>> {
-    const userId = req.user?.sub || req.user?.userId;
+    const userId = req.user?.id
     if (!userId) {
       throw new UnauthorizedException(
         'Không tìm thấy user_id vui lòng đăng nhập lại',

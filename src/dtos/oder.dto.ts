@@ -15,7 +15,7 @@ export class OrderDto {
   customerId?: number;
 
   @IsInt()
-  shiftId: number;
+  shiftUserId: number;
 
   @IsOptional()
   @IsString()
@@ -39,8 +39,7 @@ export class ViewOrderDto {
 export class OrderResponseDto {
   id: number;
   customerId: number;
-  userId: number;
-  shiftId: number;
+  shiftUserId: number;
   note: string;
   totalAmount: number;
   orderStatus: string;
