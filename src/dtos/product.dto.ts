@@ -19,7 +19,7 @@ export class CreateProductDto {
 
   @IsString()
   @IsNotEmpty()
-  sku: string;
+  image: string;
 
   @IsString()
   @IsOptional()
@@ -59,7 +59,7 @@ export class UpdateProductDto {
 
   @IsString()
   @IsOptional()
-  sku?: string;
+  image?: string;
 
   @IsString()
   @IsOptional()
@@ -92,7 +92,7 @@ export class ProductResponseDto {
   productId: number;
   categoryId: number;
   productName: string;
-  sku: string;
+  image: string;
   barcode?: string | null;
   description?: string | null;
   measureUnit?: string | null;

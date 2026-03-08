@@ -105,7 +105,7 @@ CREATE TABLE "products" (
     "id" SERIAL NOT NULL,
     "category_id" INTEGER NOT NULL,
     "product_name" TEXT NOT NULL,
-    "sku" TEXT NOT NULL,
+    "image" TEXT NOT NULL,
     "barcode" TEXT,
     "description" TEXT,
     "measure_unit" TEXT,
@@ -286,7 +286,10 @@ CREATE UNIQUE INDEX "profiles_user_id_key" ON "profiles"("user_id");
 CREATE UNIQUE INDEX "shifts_shift_name_key" ON "shifts"("shift_name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "products_sku_key" ON "products"("sku");
+CREATE UNIQUE INDEX "products_image_key" ON "products"("image");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "products_barcode_key" ON "products"("barcode");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "subscriptions_package_code_key" ON "subscriptions"("package_code");
