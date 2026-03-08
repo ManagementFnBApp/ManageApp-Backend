@@ -148,6 +148,30 @@ model Product {
   @@map("products")
 }
 
+model ShopProduct {
+  id              Int             @id @default(autoincrement())
+  category_id     Int
+  shop_id         Int
+  product_name    String
+  image           String
+  barcode         String?
+  description     String?
+  measure_unit    String?
+  import_price    Decimal         @db.Decimal(10, 2)
+  list_price      Decimal         @db.Decimal(10, 2)
+  is_active       Boolean         @default(true)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  inventory_items InventoryItem[]
+  order_items     OrderItem[]
+  shop            Shop            @relation(fields: [shop_id], references: [id])
+  category        Category        @relation(fields: [category_id], references: [id])
+
+  @@unique([shop_id, image])
+  @@unique([shop_id, barcode])
+  @@map("shop_products")
+}
+
 model Inventory {
   id                Int             @id @default(autoincrement())
   shop_id           Int
@@ -164,13 +188,15 @@ model Inventory {
 
 model InventoryItem {
   id                Int              @id @default(autoincrement())
-  product_id        Int
+  product_id        Int?
+  shop_product_id   Int?
   inventory_id      Int
   quantity          Int              @default(0)
   reserved_quantity Int?             @default(0)
   updated_at        DateTime         @updatedAt
   inventory         Inventory        @relation(fields: [inventory_id], references: [id])
-  product           Product          @relation(fields: [product_id], references: [id])
+  product           Product?         @relation(fields: [product_id], references: [id])
+  shop_product      ShopProduct?     @relation(fields: [shop_product_id], references: [id])
   inventory_traits  InventoryTrait[]
 
   @@map("inventory_items")
@@ -242,13 +268,15 @@ model Orders {
 }
 
 model OrderItem {
-  id         Int     @id @default(autoincrement())
-  product_id Int
-  order_id   Int
-  quantity   Int
-  unit_price Decimal @db.Decimal(10, 2)
-  order      Orders  @relation(fields: [order_id], references: [id])
-  product    Product @relation(fields: [product_id], references: [id])
+  id              Int          @id @default(autoincrement())
+  product_id      Int?
+  shop_product_id Int?
+  order_id        Int
+  quantity        Int
+  unit_price      Decimal      @db.Decimal(10, 2)
+  order           Orders       @relation(fields: [order_id], references: [id])
+  product         Product?     @relation(fields: [product_id], references: [id])
+  shop_product    ShopProduct? @relation(fields: [shop_product_id], references: [id])
 
   @@map("order_items")
 }
