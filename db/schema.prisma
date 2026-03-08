@@ -132,7 +132,7 @@ model Product {
   id              Int             @id @default(autoincrement())
   category_id     Int
   product_name    String
-  sku             String          @unique
+  image             String          @unique
   barcode         String?
   description     String?
   measure_unit    String?
