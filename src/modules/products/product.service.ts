@@ -17,14 +17,7 @@ export class ProductService {
   async create(
     createProductDto: CreateProductDto,
   ): Promise<ProductResponseDto> {
-    // Check if SKU already exists
-    const existingProduct = await this.prisma.product.findUnique({
-      where: { sku: createProductDto.sku },
-    });
-
-    if (existingProduct) {
-      throw new ConflictException('Product with this SKU already exists');
-    }
+    // Check if image already exists
 
     // Check if category exists
     const category = await this.prisma.category.findUnique({
@@ -39,7 +32,7 @@ export class ProductService {
       data: {
         category_id: createProductDto.categoryId,
         product_name: createProductDto.productName,
-        sku: createProductDto.sku,
+        image: createProductDto.image,
         barcode: createProductDto.barcode,
         description: createProductDto.description,
         measure_unit: createProductDto.measureUnit,
@@ -89,17 +82,6 @@ export class ProductService {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
 
-    // If SKU is being updated, check for conflicts
-    if (updateProductDto.sku && updateProductDto.sku !== existingProduct.sku) {
-      const skuConflict = await this.prisma.product.findUnique({
-        where: { sku: updateProductDto.sku },
-      });
-
-      if (skuConflict) {
-        throw new ConflictException('Product with this SKU already exists');
-      }
-    }
-
     // If category is being updated, check if it exists
     if (updateProductDto.categoryId) {
       const category = await this.prisma.category.findUnique({
@@ -116,7 +98,7 @@ export class ProductService {
       data: {
         category_id: updateProductDto.categoryId,
         product_name: updateProductDto.productName,
-        sku: updateProductDto.sku,
+        image: updateProductDto.image,
         barcode: updateProductDto.barcode,
         description: updateProductDto.description,
         measure_unit: updateProductDto.measureUnit,
@@ -186,7 +168,7 @@ export class ProductService {
       productId: product.id,
       categoryId: product.category_id,
       productName: product.product_name,
-      sku: product.sku,
+      image: product.image,
       barcode: product.barcode,
       description: product.description,
       measureUnit: product.measure_unit,

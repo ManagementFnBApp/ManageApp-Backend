@@ -8,18 +8,6 @@ import {
 } from 'class-validator';
 
 export class RegisterDto {
-  @IsInt()
-  @IsOptional()
-  shopId?: number;
-
-  @IsInt()
-  @IsOptional()
-  ownerManagerId?: number;
-
-  @IsInt()
-  @IsOptional()
-  role_id?: number;
-
   @IsEmail({}, { message: 'Email không hợp lệ' })
   @IsNotEmpty({ message: 'Email không được để trống' })
   email: string;
