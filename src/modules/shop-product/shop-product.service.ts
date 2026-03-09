@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'db/prisma.service';
-import { CreateShopProductDto, UpdateShopProductDto } from 'src/dtos/shop-product.dto';
+import { CreateShopProductDto, ShopProductResponseDto, UpdateShopProductDto } from 'src/dtos/shop-product.dto';
 
 @Injectable()
 export class ShopProductService {
@@ -8,7 +8,7 @@ export class ShopProductService {
     private readonly prisma: PrismaService,
   ) { }
 
-  async create(createShopProductDto: CreateShopProductDto, shop_id: number): Promise<any> {
+  async create(createShopProductDto: CreateShopProductDto, shop_id: number): Promise<ShopProductResponseDto> {
     const [shop, category] = await Promise.all([
       this.prisma.shop.findUnique({ where: { id: shop_id } }),
       this.prisma.category.findUnique({ where: { id: createShopProductDto.categoryId } }),
@@ -17,7 +17,7 @@ export class ShopProductService {
     if (!shop) throw new NotFoundException(`Shop with id ${shop_id} not found`);
     if (!category) throw new NotFoundException(`Category with id ${createShopProductDto.categoryId} not found`);
 
-    return await this.prisma.shopProduct.create({
+    const shopProduct = await this.prisma.shopProduct.create({
       data: {
         shop_id,
         category_id: createShopProductDto.categoryId,
@@ -35,36 +35,53 @@ export class ShopProductService {
         shop: true,
       }
     })
+    return this.transformToResponseDto(shopProduct);
   }
 
-  async findAll() {
-    return await this.prisma.shopProduct.findMany({
+  async findAll(): Promise<ShopProductResponseDto[]> {
+    const shopProducts = await this.prisma.shopProduct.findMany({
       include: {
         category: true,
         shop: true,
       }
     });
+    return shopProducts.map((product) => this.transformToResponseDto(product));
   }
 
-  async findOne(id: number) {
-    return await this.prisma.shopProduct.findUnique({
+  async findOne(id: number): Promise<ShopProductResponseDto> {
+    const shopProduct = await this.prisma.shopProduct.findUnique({
       where: {
         id,
       },
     });
+    return this.transformToResponseDto(shopProduct);
   }
 
-  async update(id: number, updateShopProductDto: UpdateShopProductDto) {
-    return await this.prisma.shopProduct.update({
+  async findByShop(shop_id: number): Promise<ShopProductResponseDto[]> {
+    const shopProducts = await this.prisma.shopProduct.findMany({
+      where: {
+        shop_id,
+      },
+      include: {
+        shop: true,
+        category: true,
+      }
+    });
+    return shopProducts.map((product) => this.transformToResponseDto(product));
+  }
+
+  async update(id: number, updateShopProductDto: UpdateShopProductDto): Promise<ShopProductResponseDto> {
+    const shopProduct = await this.prisma.shopProduct.update({
       where: {
         id,
       },
       data: updateShopProductDto,
     });
+    return this.transformToResponseDto(shopProduct);
   }
 
-  async remove(id: number) {
-    return await this.prisma.shopProduct.delete({
+  async remove(id: number): Promise<void> {
+    await this.prisma.shopProduct.delete({
       where: {
         id,
       },
