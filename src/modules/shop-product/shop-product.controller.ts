@@ -20,14 +20,14 @@ export class ShopProductController {
 
   @Roles(Role.ADMIN)
   @Get('all')
-  async findAll() {
-    return await this.shopProductService.findAll();
+  async findAll(): Promise<ResponseType<ShopProductResponseDto[]>> {
+    return new ResponseData<ShopProductResponseDto[]>(await this.shopProductService.findAll(), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 
   @Roles(Role.ADMIN)
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return await this.shopProductService.findOne(+id);
+  async findOne(@Param('id') id: string): Promise<ResponseType<ShopProductResponseDto>> {
+    return new ResponseData(await this.shopProductService.findOne(+id), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 
   @Roles(Role.SHOPOWNER)
@@ -50,9 +50,18 @@ export class ShopProductController {
     return new ResponseData(await this.shopProductService.update(+id, updateShopProductDto), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 
-  @Roles(Role.SHOPOWNER, Role.ADMIN)
+  @Roles(Role.SHOPOWNER)
   @Delete(':id')
-  async remove(@Param('id') id: string): Promise<ResponseType<{message: string}>> {
-    return new ResponseData(await this.shopProductService.remove(+id), HttpStatus.OK, HttpMessage.SUCCESS);
+  async remove(@Param('id') id: string, @GetUser('shop_id') shop_id: number): Promise<ResponseType<{message: string}>> {
+    if (!shop_id) {
+      throw new ForbiddenException('You are not associated with any shop. Please contact your administrator.');
+    }
+    return new ResponseData(await this.shopProductService.remove(+id, shop_id), HttpStatus.OK, HttpMessage.SUCCESS);
+  }
+
+  @Roles(Role.ADMIN)
+  @Delete('admin/:id')
+  async removeAdmin(@Param('id') id: string): Promise<ResponseType<{message: string}>> {
+    return new ResponseData(await this.shopProductService.remove(+id, 0, true), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 }
