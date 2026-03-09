@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'db/prisma.service';
 import { CreateShopProductDto, ShopProductResponseDto, UpdateShopProductDto } from 'src/dtos/shop-product.dto';
 
@@ -80,12 +80,24 @@ export class ShopProductService {
     return this.transformToResponseDto(shopProduct);
   }
 
-  async remove(id: number): Promise<{message: string}> {
+  async remove(id: number, shop_id: number, skipOwnerCheck = false): Promise<{ message: string }> {
+    if (!skipOwnerCheck) {
+      const shopProduct = await this.prisma.shopProduct.findUnique({
+        where: { id },
+      });
+
+      if (!shopProduct) {
+        throw new NotFoundException(`Product with id ${id} not found`);
+      }
+
+      if (shopProduct.shop_id !== shop_id) {
+        throw new ForbiddenException(`You are not allowed to delete this product`);
+      }
+    }
     await this.prisma.shopProduct.delete({
-      where: {
-        id,
-      },
+      where: { id },
     });
+
     return { message: 'Product removed successfully' };
   }
 
