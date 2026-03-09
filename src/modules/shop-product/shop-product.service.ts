@@ -80,12 +80,13 @@ export class ShopProductService {
     return this.transformToResponseDto(shopProduct);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number): Promise<{message: string}> {
     await this.prisma.shopProduct.delete({
       where: {
         id,
       },
     });
+    return { message: 'Product removed successfully' };
   }
 
   transformToResponseDto(shopProduct: any) {

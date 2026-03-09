@@ -52,7 +52,7 @@ export class ShopProductController {
 
   @Roles(Role.SHOPOWNER, Role.ADMIN)
   @Delete(':id')
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string): Promise<ResponseType<{message: string}>> {
     return new ResponseData(await this.shopProductService.remove(+id), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 }
