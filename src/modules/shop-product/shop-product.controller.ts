@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpStatus, ForbiddenException } from '@nestjs/common';
 import { ShopProductService } from './shop-product.service';
 import { CreateShopProductDto, UpdateShopProductDto } from 'src/dtos/shop-product.dto';
 import { GetUser, Roles } from 'src/decorators/decorators';
@@ -13,7 +13,7 @@ export class ShopProductController {
   @Post()
   async create(@Body() createShopProductDto: CreateShopProductDto, @GetUser('shop_id') shop_id: number): Promise<ResponseType<any>> {
     if (!shop_id) {
-      throw new Error('You are not associated with any shop. Please contact your administrator.');
+      throw new ForbiddenException('You are not associated with any shop. Please contact your administrator.');
     }
     return new ResponseData(await this.shopProductService.create(createShopProductDto, shop_id), HttpStatus.CREATED, HttpMessage.SUCCESS);
   }
@@ -32,7 +32,12 @@ export class ShopProductController {
 
   @Roles(Role.SHOPOWNER, Role.ADMIN)
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateShopProductDto: UpdateShopProductDto, @GetUser('shop_id') shop_id: number) {
+  async update(@Param('id') id: string, @Body() updateShopProductDto: UpdateShopProductDto, @GetUser() user: any) {
+    const isAdmin = user.role === Role.ADMIN;
+    const isShopOwnerWithShop = user.role === Role.SHOPOWNER && !!user.shop_id;
+    if (!isAdmin && !isShopOwnerWithShop) {
+      throw new ForbiddenException('You are not associated with any shop. Please contact your administrator.');
+    }
     return await this.shopProductService.update(+id, updateShopProductDto);
   }
 

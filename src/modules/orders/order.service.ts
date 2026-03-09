@@ -1,14 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { OrderDto, OrderResponseDto, ViewOrderDto } from 'src/dtos/oder.dto';
 import { OrderStatus } from 'src/global/globalEnum';
-import { ProductService } from '../products/product.service';
 import { PrismaService } from 'db/prisma.service';
 const POINTS_PER_VND = 10_000;
 @Injectable()
 export class OrderService {
   constructor(
-    private prisma: PrismaService,
-    private productsService: ProductService,
+    private prisma: PrismaService
   ) { }
 
   async createOrder(data: OrderDto, _user_id: number): Promise<any> {
@@ -19,10 +17,10 @@ export class OrderService {
       const hasProduct = item.product_id != null;
       const hasShopProduct = item.shop_product_id != null;
       if (hasProduct && hasShopProduct) {
-        throw new Error('Each order item must reference either a product or a shop product, not both.');
+        throw new BadRequestException('Each order item must reference either a product or a shop product, not both.');
       }
       if (!hasProduct && !hasShopProduct) {
-        throw new Error('Each order item must reference either a product or a shop product.');
+        throw new BadRequestException('Each order item must reference either a product or a shop product.');
       }
     }
 
@@ -46,7 +44,7 @@ export class OrderService {
       });
 
       if (existingProducts.length !== productIds.length || existingShopProducts.length !== shopProductIds.length) {
-        throw new Error('One or more products do not exist');
+        throw new BadRequestException('One or more products do not exist');
       }
 
       return prismaTx.orders.create({
@@ -99,10 +97,10 @@ export class OrderService {
         const hasProduct = item.product_id != null;
         const hasShopProduct = item.shop_product_id != null;
         if (hasProduct && hasShopProduct) {
-          throw new Error('Each order item must reference either a product or a shop product, not both.');
+          throw new BadRequestException('Each order item must reference either a product or a shop product, not both.');
         }
         if (!hasProduct && !hasShopProduct) {
-          throw new Error('Each order item must reference either a product or a shop product.');
+          throw new BadRequestException('Each order item must reference either a product or a shop product.');
         }
       }
 
@@ -124,7 +122,7 @@ export class OrderService {
       });
 
       if (existingProducts.length !== productIds.length || existingShopProducts.length !== shopProductIds.length) {
-        throw new Error('One or more products do not exist');
+        throw new BadRequestException('One or more products do not exist');
       }
 
       // Delete existing order items
