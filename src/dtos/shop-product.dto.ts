@@ -47,12 +47,9 @@ export class UpdateShopProductDto extends PartialType(CreateShopProductDto) { }
 export class ShopProductResponseDto {
     id: number;
 
-    @Exclude()
     shop_id: number;
 
     shop_name: string;
-
-    @Exclude()
     category_id: number;
 
     category_name: string;
@@ -70,6 +67,6 @@ export class ShopProductResponseDto {
     list_price: number;
 
     import_price: number;
-    
+
     is_active: boolean;
 }
