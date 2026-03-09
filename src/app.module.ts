@@ -25,6 +25,7 @@ import { MerchandiseRedemptionModule } from './modules/merchandise-redemptions/m
 import { CategoryModule } from './modules/categories/category.module';
 import { ShopCategoryModule } from './modules/shop-category/shop-category.module';
 import { ShiftModule } from './modules/shifts/shift.module';
+import { ShopProductModule } from './modules/shop-product/shop-product.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { ShiftModule } from './modules/shifts/shift.module';
     CategoryModule,
     ShopCategoryModule,
     ShiftModule,
+    ShopProductModule,
   ],
   controllers: [AppController],
   providers: [

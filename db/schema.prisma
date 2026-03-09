@@ -67,6 +67,7 @@ model Shop {
   shop_categories    ShopCategory[]
   shop_subscriptions ShopSubscription[]
   users              User[]
+  shop_products     ShopProduct[]
 
   @@map("shops")
 }
@@ -114,6 +115,7 @@ model Category {
   is_active     Boolean        @default(true)
   products      Product[]
   shop_category ShopCategory[]
+  shop_products     ShopProduct[]
 
   @@map("categories")
 }

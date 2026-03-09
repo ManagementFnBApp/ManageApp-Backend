@@ -9,13 +9,25 @@ export class OrderService {
   constructor(
     private prisma: PrismaService,
     private productsService: ProductService,
-  ) {}
+  ) { }
 
   async createOrder(data: OrderDto, _user_id: number): Promise<any> {
     const { order_items, ...orderInfo } = data;
 
-    // 1. Lấy danh sách ID sản phẩm để kiểm tra
-    const productIds = order_items.map((item) => item.product_id);
+    // 1. Validate that each item has exactly one of product_id or shop_product_id
+    for (const item of order_items) {
+      const hasProduct = item.product_id != null;
+      const hasShopProduct = item.shop_product_id != null;
+      if (hasProduct && hasShopProduct) {
+        throw new Error('Each order item must reference either a product or a shop product, not both.');
+      }
+      if (!hasProduct && !hasShopProduct) {
+        throw new Error('Each order item must reference either a product or a shop product.');
+      }
+    }
+
+    const productIds = order_items.map((item) => item.product_id).filter((id) => id != null);
+    const shopProductIds = order_items.map((item) => item.shop_product_id).filter((id) => id != null);
 
     const order = await this.prisma.$transaction(async (prismaTx) => {
       // Kiểm tra sự tồn tại của sản phẩm trong cùng transaction để tránh race condition
@@ -26,9 +38,17 @@ export class OrderService {
         select: { id: true },
       });
 
-      if (existingProducts.length !== productIds.length) {
+      const existingShopProducts = await prismaTx.shopProduct.findMany({
+        where: {
+          id: { in: shopProductIds },
+        },
+        select: { id: true },
+      });
+
+      if (existingProducts.length !== productIds.length || existingShopProducts.length !== shopProductIds.length) {
         throw new Error('One or more products do not exist');
       }
+
       return prismaTx.orders.create({
         data: {
           customer_id: orderInfo.customerId,
@@ -48,6 +68,9 @@ export class OrderService {
               product: {
                 select: { product_name: true },
               },
+              shop_product: {
+                select: { product_name: true },
+              }
             },
           },
         },
@@ -57,7 +80,7 @@ export class OrderService {
     return {
       id: order.id,
       items: order.order_items.map((item) => ({
-        product_name: item.product.product_name,
+        product_name: item.product?.product_name || item.shop_product?.product_name || '',
         quantity: item.quantity,
       })),
     };
@@ -71,8 +94,20 @@ export class OrderService {
         where: { id: Number(id) },
       });
 
+      // Validate that each item has exactly one of product_id or shop_product_id
+      for (const item of order_items) {
+        const hasProduct = item.product_id != null;
+        const hasShopProduct = item.shop_product_id != null;
+        if (hasProduct && hasShopProduct) {
+          throw new Error('Each order item must reference either a product or a shop product, not both.');
+        }
+        if (!hasProduct && !hasShopProduct) {
+          throw new Error('Each order item must reference either a product or a shop product.');
+        }
+      }
+
       // Validate that all products exist
-      const productIds = order_items.map((item) => item.product_id);
+      const productIds = order_items.map((item) => item.product_id).filter((id) => id != null);
       const existingProducts = await prismaTx.product.findMany({
         where: {
           id: { in: productIds },
@@ -80,7 +115,15 @@ export class OrderService {
         select: { id: true },
       });
 
-      if (existingProducts.length !== productIds.length) {
+      const shopProductIds = order_items.map((item) => item.shop_product_id).filter((id) => id != null);
+      const existingShopProducts = await prismaTx.shopProduct.findMany({
+        where: {
+          id: { in: shopProductIds },
+        },
+        select: { id: true },
+      });
+
+      if (existingProducts.length !== productIds.length || existingShopProducts.length !== shopProductIds.length) {
         throw new Error('One or more products do not exist');
       }
 
@@ -110,6 +153,9 @@ export class OrderService {
               product: {
                 select: { product_name: true },
               },
+              shop_product: {
+                select: { product_name: true },
+              },
             },
           },
         },
@@ -119,35 +165,35 @@ export class OrderService {
     return {
       id: order.id,
       items: order.order_items.map((item) => ({
-        product_name: item.product.product_name,
+        product_name: item.product?.product_name || item.shop_product?.product_name || '',
         quantity: item.quantity,
       })),
     };
   }
 
   async completeOrder(id: number): Promise<OrderResponseDto> {
-        const order = await this.prisma.$transaction(async (tx) => {
-            const updatedOrder = await tx.orders.update({
-                where: { id: Number(id) },
-                data: {
-                    order_status: OrderStatus.COMPLETED,
-                    completed_at: new Date(),
-                },
-            });
+    const order = await this.prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.orders.update({
+        where: { id: Number(id) },
+        data: {
+          order_status: OrderStatus.COMPLETED,
+          completed_at: new Date(),
+        },
+      });
 
-            // Tích điểm: chỉ khi đơn hàng có customer
-            if (updatedOrder.customer_id) {
-                const points = Math.floor(Number(updatedOrder.total_amount) / POINTS_PER_VND);
-                if (points > 0) {
-                    await tx.customer.update({
-                        where: { id: updatedOrder.customer_id },
-                        data: { loyalty_point: { increment: points } },
-                    });
-                }
-            }
+      // Tích điểm: chỉ khi đơn hàng có customer
+      if (updatedOrder.customer_id) {
+        const points = Math.floor(Number(updatedOrder.total_amount) / POINTS_PER_VND);
+        if (points > 0) {
+          await tx.customer.update({
+            where: { id: updatedOrder.customer_id },
+            data: { loyalty_point: { increment: points } },
+          });
+        }
+      }
 
-            return updatedOrder;
-        }, { timeout: 30000, maxWait: 30000 });
+      return updatedOrder;
+    }, { timeout: 30000, maxWait: 30000 });
     return this.transformToDto(order);
   }
 
@@ -181,6 +227,9 @@ export class OrderService {
             product: {
               select: { product_name: true },
             },
+            shop_product: {
+              select: { product_name: true },
+            },
           },
         },
       },
@@ -189,6 +238,7 @@ export class OrderService {
       ...this.transformToDto(order),
       order_items: order.order_items.map((item) => ({
         ...item,
+        product_name: item.product?.product_name || item.shop_product?.product_name || '',
         unit_price: Number(item.unit_price),
       })),
     }));
