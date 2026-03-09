@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'db/prisma.service';
 import { CreateShopProductDto, UpdateShopProductDto } from 'src/dtos/shop-product.dto';
 
@@ -9,6 +9,14 @@ export class ShopProductService {
   ) { }
 
   async create(createShopProductDto: CreateShopProductDto, shop_id: number): Promise<any> {
+    const [shop, category] = await Promise.all([
+      this.prisma.shop.findUnique({ where: { id: shop_id } }),
+      this.prisma.category.findUnique({ where: { id: createShopProductDto.categoryId } }),
+    ]);
+
+    if (!shop) throw new NotFoundException(`Shop with id ${shop_id} not found`);
+    if (!category) throw new NotFoundException(`Category with id ${createShopProductDto.categoryId} not found`);
+
     return await this.prisma.shopProduct.create({
       data: {
         shop_id,
