@@ -8,7 +8,10 @@ export class OrderItemService {
   async findByOrderId(orderId: number) {
     return this.prisma.orderItem.findMany({
       where: { order_id: orderId },
-      include: { product: true },
+      include: {
+        product: true,
+        shop_product: true,
+      },
     });
   }
 }
