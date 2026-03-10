@@ -354,6 +354,16 @@ export class UserService {
     return this.prisma.user.count();
   }
 
+  async getManagedUsers(shop_id: number): Promise<UserResponseDto[]> {
+    const users = await this.prisma.user.findMany({
+      where: {
+        shop_id,
+        owner_manager_id: null, // Chỉ lấy những user có owner_manager_id là null (tức là do shop owner tạo ra)
+      }
+    })
+    return users.map((user) => this.transformToDto(user));
+  }
+
   // Helper method to transform Prisma User to UserResponseDto
   private transformToDto(user: any): UserResponseDto {
     return {
