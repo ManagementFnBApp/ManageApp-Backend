@@ -26,13 +26,13 @@ import {
 } from '../../dtos/user.dto';
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
 import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
-import { Public, Roles } from 'src/decorators/decorators';
+import { GetUser, Public, Roles } from 'src/decorators/decorators';
 
 @ApiTags('Users')
 @ApiBearerAuth()
 @Controller('users')
 export class UserController {
-  constructor(protected readonly userService: UserService) {}
+  constructor(protected readonly userService: UserService) { }
 
   @Roles(Role.ADMIN)
   @Get()
@@ -71,6 +71,7 @@ export class UserController {
     );
   }
 
+  // API này sẽ xoá
   @Put(':id/role')
   @Public()
   @ApiOperation({
@@ -118,5 +119,14 @@ export class UserController {
       HttpStatus.SUCCESS,
       HttpMessage.SUCCESS,
     );
+  }
+
+  @Roles(Role.SHOPOWNER)
+  @Get('managed')
+  async getManagedUsers(@GetUser('shop_id') shop_id: number): Promise<ResponseType<UserResponseDto[]>> {
+    if (!shop_id) {
+      throw new UnauthorizedException('Bạn không thuộc shop nào. Vui lòng liên hệ quản trị viên.');
+    }
+    return new ResponseData<UserResponseDto[]>(await this.userService.getManagedUsers(shop_id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
   }
 }
