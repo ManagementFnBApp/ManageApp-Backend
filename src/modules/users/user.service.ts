@@ -349,6 +349,42 @@ export class UserService {
     return user ? this.transformToDto(user) : null;
   }
 
+  // SHOPOWNER lấy danh sách nhân viên trong shop của mình
+  async getManagedUsers(shopOwnerId: number): Promise<UserResponseDto[]> {
+    const shopOwner = await this.prisma.user.findUnique({
+      where: { id: shopOwnerId },
+      include: { role: true },
+    });
+
+    if (!shopOwner) {
+      throw new NotFoundException(`User với ID ${shopOwnerId} không tồn tại`);
+    }
+
+    if (shopOwner.role?.role_code !== 'SHOPOWNER') {
+      throw new BadRequestException(
+        'Chỉ có SHOPOWNER mới được xem danh sách nhân viên',
+      );
+    }
+
+    if (!shopOwner.shop_id) {
+      throw new BadRequestException(
+        'SHOPOWNER chưa có shop. Vui lòng đăng ký subscription trước.',
+      );
+    }
+
+    const managedUsers = await this.prisma.user.findMany({
+      where: {
+        owner_manager_id: shopOwnerId,
+      },
+      include: {
+        role: true,
+        profile: true,
+      },
+    });
+
+    return managedUsers.map((user) => this.transformToDto(user));
+  }
+
   // Đếm số lượng user trong hệ thống
   async getUserCount(): Promise<number> {
     return this.prisma.user.count();

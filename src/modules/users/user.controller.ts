@@ -93,10 +93,35 @@ export class UserController {
     );
   }
 
+  @Get('managed')
+  @Roles(Role.SHOPOWNER)
+  @ApiOperation({
+    summary: 'SHOPOWNER lấy danh sách nhân viên trong shop của mình',
+  })
+  @ApiResponse({ status: 200, description: 'Lấy danh sách nhân viên thành công' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  @ApiResponse({ status: 403, description: 'Không có quyền' })
+  async getManagedUsers(
+    @Request() req: any,
+  ): Promise<ResponseType<UserResponseDto>> {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException(
+        'Không tìm thấy user_id vui lòng đăng nhập lại',
+      );
+    }
+
+    return new ResponseData(
+      await this.userService.getManagedUsers(userId),
+      HttpStatus.SUCCESS,
+      HttpMessage.SUCCESS,
+    );
+  }
+
   @Post('managed')
   @ApiOperation({
     summary:
-      'SHOPOWNER t?o user m?i (SHOPOWNER ho?c STAFF) cho shop - Cần login',
+      'SHOPOWNER tao user mai (SHOPOWNER ho?c STAFF) cho shop - Cần login',
     description: 'SHOPOWNER tạo và gửi mail',
   })
   @ApiResponse({ status: 201, description: 'Tạo user thành công và gửi gmail' })
