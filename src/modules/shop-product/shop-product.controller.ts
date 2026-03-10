@@ -30,7 +30,7 @@ export class ShopProductController {
     return new ResponseData(await this.shopProductService.findOne(+id), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 
-  @Roles(Role.SHOPOWNER)
+  @Roles(Role.SHOPOWNER, Role.STAFF)
   @Get()
   async findByShop(@GetUser('shop_id') shop_id: number): Promise<ResponseType<ShopProductResponseDto[]>> {
     if (!shop_id) {

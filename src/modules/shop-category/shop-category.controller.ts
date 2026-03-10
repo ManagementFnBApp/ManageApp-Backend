@@ -28,7 +28,7 @@ export class ShopCategoryController {
   }
 
   @Get()
-  @Roles(Role.SHOPOWNER)
+  @Roles(Role.SHOPOWNER, Role.STAFF)
   async getCategoriesByShopId(
     @GetUser('shop_id') shopId: number,
   ): Promise<ResponseType<ShopCategoryWithCategoryDto[]>> {
