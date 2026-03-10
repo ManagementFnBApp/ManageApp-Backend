@@ -121,7 +121,7 @@ export class UserController {
   @Post('managed')
   @ApiOperation({
     summary:
-      'SHOPOWNER tao user mai (SHOPOWNER ho?c STAFF) cho shop - Cần login',
+      'SHOPOWNER tạo user mới (SHOPOWNER hoặc STAFF) cho shop - Cần đăng nhập',
     description: 'SHOPOWNER tạo và gửi mail',
   })
   @ApiResponse({ status: 201, description: 'Tạo user thành công và gửi gmail' })
