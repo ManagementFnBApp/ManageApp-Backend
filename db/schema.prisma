@@ -85,6 +85,7 @@ model ShiftUser {
   shift_id       Int
   user_id        Int
   shop_id        Int
+  date           DateTime @db.Date
   notes          String?
   created_at     DateTime  @default(now())
   orders         Orders[]

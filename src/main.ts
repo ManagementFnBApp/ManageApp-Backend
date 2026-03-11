@@ -25,9 +25,9 @@ async function bootstrap() {
   // Enable global validation with auto-transform
   app.useGlobalPipes(
     new ValidationPipe({
-      transform: true, // Tự động transform kiểu dữ liệu (string "1" -> number 1)
-      whitelist: true, // Loại bỏ các field không có trong DTO
-      forbidNonWhitelisted: false, // Không throw error với field không có trong DTO
+      transform: true, 
+      whitelist: true, 
+      forbidNonWhitelisted: false, 
     }),
   );
 
