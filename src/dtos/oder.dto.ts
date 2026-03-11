@@ -47,3 +47,7 @@ export class OrderResponseDto {
   completedAt?: Date | null;
   cancelledAt?: Date | null;
 }
+
+export class OrderReportDto {
+  numberOfOrders: number;
+}

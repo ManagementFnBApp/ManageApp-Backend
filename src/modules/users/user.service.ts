@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   CreateUserDto,
@@ -13,6 +14,7 @@ import {
 import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'db/prisma.service';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 
 @Injectable()
 export class UserService {
@@ -354,14 +356,18 @@ export class UserService {
     return this.prisma.user.count();
   }
 
-  async getManagedUsers(shop_id: number): Promise<UserResponseDto[]> {
+  async getManagedUsers(user: JwtPayloadDto): Promise<UserResponseDto[]> {
+    if (!user.shop_id) {
+      throw new UnauthorizedException('Bạn không thuộc shop nào. Vui lòng liên hệ quản trị viên.');
+    }
     const users = await this.prisma.user.findMany({
       where: {
-        shop_id,
-        owner_manager_id: null, // Chỉ lấy những user có owner_manager_id là null (tức là do shop owner tạo ra)
-      }
-    })
-    return users.map((user) => this.transformToDto(user));
+        shop_id: user.shop_id,
+        owner_manager_id: user.id,
+      },
+      include: { role: true, profile: true },
+    });
+    return users.map((u) => this.transformToDto(u));
   }
 
   // Helper method to transform Prisma User to UserResponseDto

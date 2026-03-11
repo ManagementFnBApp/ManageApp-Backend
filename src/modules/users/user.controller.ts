@@ -27,6 +27,7 @@ import {
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
 import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
 import { GetUser, Public, Roles } from 'src/decorators/decorators';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -123,10 +124,10 @@ export class UserController {
 
   @Roles(Role.SHOPOWNER)
   @Get('managed')
-  async getManagedUsers(@GetUser('shop_id') shop_id: number): Promise<ResponseType<UserResponseDto[]>> {
-    if (!shop_id) {
+  async getManagedUsers(@GetUser('') user: JwtPayloadDto): Promise<ResponseType<UserResponseDto[]>> {
+    if (!user) {
       throw new UnauthorizedException('Bạn không thuộc shop nào. Vui lòng liên hệ quản trị viên.');
     }
-    return new ResponseData<UserResponseDto[]>(await this.userService.getManagedUsers(shop_id), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
+    return new ResponseData<UserResponseDto[]>(await this.userService.getManagedUsers(user), HttpStatus.SUCCESS, HttpMessage.SUCCESS);
   }
 }

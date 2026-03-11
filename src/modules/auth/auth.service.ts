@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuthPermission, LoginDto } from 'src/dtos/login.dto';
+import { AuthPermission, JwtPayloadDto, LoginDto } from 'src/dtos/login.dto';
 import { UserService } from '../users/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { RegisterDto } from '../../dtos/register.dto';
@@ -42,7 +42,7 @@ export class AuthService {
       throw new UnauthorizedException('Username or password is incorrect');
     }
     // Tạo payload với sub chứa user_id
-    const payload = {
+    const payload: JwtPayloadDto = {
       id: user.user_id,
       username: user.username,
       role: user.role,
