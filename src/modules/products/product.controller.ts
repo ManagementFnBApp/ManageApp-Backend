@@ -14,6 +14,7 @@ import {
 import { ProductService } from './product.service';
 import { CreateProductDto, UpdateProductDto } from '../../dtos/product.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { Public } from 'src/decorators/decorators';
 
 @Controller('products')
 @UseGuards(AuthGuard)
@@ -25,6 +26,7 @@ export class ProductController {
     return this.productService.create(createProductDto);
   }
 
+  @Public()
   @Get()
   findAll(
     @Query('isActive', new ParseBoolPipe({ optional: true }))

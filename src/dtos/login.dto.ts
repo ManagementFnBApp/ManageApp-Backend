@@ -1,11 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty } from 'class-validator';
 
-export interface JwtPayload {
-  sub: number; // user ID
-  username: string;
-  role: string; // or permissions: string[]
-  ownerManagerId?: number | null; // Để check SHOPOWNER gốc
+export class JwtPayloadDto {
+  id: number; // user ID
+  username?: string;
+  role: string | null; // or permissions: string[]
+  owner_manager_id?: number | null; // Để check SHOPOWNER gốc
+  shop_id?: number | null; // Để check SHOP STAFF
 }
 
 export class LoginDto {
@@ -28,21 +29,21 @@ export class LoginResponseDto {
 
 export class AuthResponseDto {
   username: string;
-  role: string;
-  ownerManagerId?: number | null;
+  role: string | null;
+  owner_manager_id?: number | null;
 
   constructor({
     username,
     role,
-    ownerManagerId,
+    owner_manager_id,
   }: {
     username: string;
     role: string;
-    ownerManagerId?: number | null;
+    owner_manager_id?: number | null;
   }) {
     this.username = username;
     this.role = role;
-    this.ownerManagerId = ownerManagerId;
+    this.owner_manager_id = owner_manager_id;
     return this;
   }
 }

@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { OrderDto, OrderResponseDto, ViewOrderDto } from 'src/dtos/oder.dto';
+import { OrderDto, OrderReportDto, OrderResponseDto, ViewOrderDto } from 'src/dtos/oder.dto';
 import { OrderStatus } from 'src/global/globalEnum';
 import { PrismaService } from 'db/prisma.service';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 const POINTS_PER_VND = 10_000;
 @Injectable()
 export class OrderService {
@@ -240,6 +241,20 @@ export class OrderService {
         unit_price: Number(item.unit_price),
       })),
     }));
+  }
+
+  async orderReport(user: JwtPayloadDto): Promise<OrderReportDto> {
+    if (!user.shop_id) {
+      throw new BadRequestException('User does not belong to any shop');
+    }
+    const numberOfOrders = await this.prisma.orders.count({
+      where: {
+        shift_user: {
+          shop_id: user.shop_id,
+        }
+      }
+    })
+    return { numberOfOrders };
   }
 
   transformToDto(order: any): OrderResponseDto {
