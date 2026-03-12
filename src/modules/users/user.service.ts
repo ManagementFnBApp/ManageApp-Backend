@@ -351,6 +351,7 @@ export class UserService {
     return user ? this.transformToDto(user) : null;
   }
 
+
   // Đếm số lượng user trong hệ thống
   async getUserCount(): Promise<number> {
     return this.prisma.user.count();

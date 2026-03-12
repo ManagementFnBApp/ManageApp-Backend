@@ -94,11 +94,10 @@ export class UserController {
       HttpMessage.SUCCESS,
     );
   }
-
   @Post('managed')
   @ApiOperation({
     summary:
-      'SHOPOWNER t?o user m?i (SHOPOWNER ho?c STAFF) cho shop - Cần login',
+      'SHOPOWNER tao user mai (SHOPOWNER ho?c STAFF) cho shop - Cần login',
     description: 'SHOPOWNER tạo và gửi mail',
   })
   @ApiResponse({ status: 201, description: 'Tạo user thành công và gửi gmail' })

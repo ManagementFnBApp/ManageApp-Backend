@@ -186,3 +186,43 @@ export class SubscriptionResponseDto {
   updated_at: Date;
   deleted_at?: Date | null;
 }
+
+// ==================== MOMO PAYMENT DTOs ====================
+
+export class CreateMomoSubscriptionPaymentDto {
+  @ApiProperty({
+    example: 1,
+    description: 'ID của shop subscription (lấy từ bước tạo shop)',
+  })
+  @IsInt()
+  @IsNotEmpty()
+  sub_shop_id: number;
+}
+
+export class MomoPaymentResponseDto {
+  @ApiProperty({ example: 1 })
+  paymentId: number;
+
+  @ApiProperty({ example: 299000 })
+  amount: number;
+
+  @ApiProperty({
+    example: 'https://test-payment.momo.vn/v2/gateway/pay?...',
+    description: 'URL trang thanh toán MoMo - redirect user đến đây',
+  })
+  payUrl: string;
+
+  @ApiProperty({
+    example: 'https://...',
+    description: 'URL mã QR dạng ảnh (nếu có)',
+    required: false,
+  })
+  qrCodeUrl?: string;
+
+  @ApiProperty({
+    example: 'momo://...',
+    description: 'Deeplink mở app MoMo (nếu có)',
+    required: false,
+  })
+  deeplink?: string;
+}

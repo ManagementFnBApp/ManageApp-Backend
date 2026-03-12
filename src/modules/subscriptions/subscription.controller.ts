@@ -10,6 +10,8 @@ import {
   UseGuards,
   Request,
   UnauthorizedException,
+  Query,
+  Res,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,6 +19,8 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { type Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { SubscriptionService } from './subscription.service';
 import { ShopSubscriptionService } from '../shop-subscriptions/shop-subscription.service';
 import { Public, Roles } from '../../decorators/decorators';
@@ -29,6 +33,8 @@ import {
   CreateSubscriptionPaymentDto,
   SubscriptionPaymentResponseDto,
   RenewSubscriptionPaymentDto,
+  CreateMomoSubscriptionPaymentDto,
+  MomoPaymentResponseDto,
 } from '../../dtos/subscription.dto';
 
 @ApiTags('Subscriptions')
@@ -38,6 +44,7 @@ export class SubscriptionController {
   constructor(
     private readonly subscriptionService: SubscriptionService,
     private readonly shopSubscriptionService: ShopSubscriptionService,
+    private readonly configService: ConfigService,
   ) {}
 
   // ==================== SUBSCRIPTION ENDPOINTS ====================
@@ -256,5 +263,102 @@ export class SubscriptionController {
   @ApiResponse({ status: 200, description: 'Xóa thành công' })
   async cleanupExpiredShops(): Promise<{ deleted: number; message: string }> {
     return this.shopSubscriptionService.deleteExpiredShopsAfter14Days();
+  }
+
+  // ==================== MOMO PAYMENT ENDPOINTS ====================
+
+  @Post('payments/momo')
+  @ApiOperation({
+    summary: 'Tạo thanh toán MoMo QR cho subscription - Cần login',
+    description:
+      'Tạo yêu cầu thanh toán MoMo cho shop subscription. Response trả về `payUrl` để redirect user đến trang thanh toán MoMo (có QR code). Sau khi thanh toán thành công, MoMo sẽ tự động gọi IPN để kích hoạt shop.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Tạo link thanh toán MoMo thành công',
+    type: MomoPaymentResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Lỗi tạo thanh toán' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  async createMomoPayment(
+    @Body() dto: CreateMomoSubscriptionPaymentDto,
+    @Request() req: any,
+  ): Promise<MomoPaymentResponseDto> {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException(
+        'Không tìm thấy userId trong token. Vui lòng đăng nhập lại.',
+      );
+    }
+    return this.shopSubscriptionService.createMomoSubscriptionPayment(
+      dto.sub_shop_id,
+    );
+  }
+
+  @Post('payments/momo/ipn')
+  @Public()
+  @ApiOperation({
+    summary: 'MoMo IPN Webhook (Public - chỉ dành cho MoMo gọi)',
+    description:
+      'Endpoint nhận thông báo thanh toán từ MoMo server. Tự động xác thực chữ ký và kích hoạt shop sau khi thanh toán thành công. KHÔNG gọi endpoint này từ frontend.',
+  })
+  @ApiResponse({ status: 200, description: 'IPN processed' })
+  async momoIPN(
+    @Body() body: Record<string, any>,
+  ): Promise<{ message: string }> {
+    return this.shopSubscriptionService.handleMomoIPN(body);
+  }
+
+  @Get('payments/momo/callback')
+  @Public()
+  @ApiOperation({
+    summary: 'MoMo redirect callback sau thanh toán (Public)',
+    description:
+      'MoMo redirect user về endpoint này sau khi thanh toán. Backend xác nhận kết quả và redirect đến trang success/failed của frontend.',
+  })
+  @ApiResponse({ status: 302, description: 'Redirect đến frontend' })
+  async momoCallback(
+    @Query() query: Record<string, string>,
+    @Res() res: Response,
+  ): Promise<void> {
+    const frontendUrl = this.configService.get<string>(
+      'FRONTEND_URL',
+      'http://localhost:5173',
+    );
+    const { orderId, resultCode } = query;
+
+    if (resultCode === '0') {
+      res.redirect(
+        `${frontendUrl}/payment/success?orderId=${orderId ?? ''}`,
+      );
+    } else {
+      res.redirect(
+        `${frontendUrl}/payment/failed?orderId=${orderId ?? ''}&resultCode=${resultCode ?? ''}`,
+      );
+    }
+  }
+
+  @Post('renew/momo')
+  @ApiOperation({
+    summary: 'Gia hạn subscription bằng MoMo - Cần login (SHOPOWNER)',
+    description:
+      'Tạo yêu cầu thanh toán MoMo để gia hạn subscription. Trả về `payUrl` để redirect user đến trang thanh toán MoMo.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Tạo link gia hạn MoMo thành công',
+    type: MomoPaymentResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  async renewMomoSubscription(
+    @Request() req: any,
+  ): Promise<MomoPaymentResponseDto> {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException(
+        'Không tìm thấy userId trong token. Vui lòng đăng nhập lại.',
+      );
+    }
+    return this.shopSubscriptionService.renewMomoSubscription(userId);
   }
 } //het

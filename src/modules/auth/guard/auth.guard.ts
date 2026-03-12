@@ -9,7 +9,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { Request } from 'express';
 import { IS_PUBLIC_KEY } from 'src/decorators/decorators';
-import { JwtPayload } from 'src/dtos/login.dto';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -34,7 +34,7 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
     try {
-      const payload: JwtPayload = await this.jwtService.verifyAsync(token, {
+      const payload: JwtPayloadDto = await this.jwtService.verifyAsync(token, {
         secret: this.configService.get<string>('JWT_SECRET_KEY'),
       });
       request['user'] = payload;
