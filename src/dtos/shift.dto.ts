@@ -1,4 +1,5 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsDate, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 // ==============================
 // Shift template DTOs
@@ -26,6 +27,10 @@ export class AssignShiftDto {
   @IsInt()
   @Min(1)
   user_id: number;
+
+  @IsDate()
+  @Type(() => Date)
+  date: Date;
 
   @IsOptional()
   @IsString()
