@@ -16,10 +16,6 @@ import {
 export class ShiftService {
   constructor(private prisma: PrismaService) {}
 
-  // ──────────────────────────────────────────
-  // Shift Templates
-  // ──────────────────────────────────────────
-
   async createShift(dto: CreateShiftDto): Promise<ShiftResponseDto> {
     const existing = await this.prisma.shift.findUnique({
       where: { shift_name: dto.shift_name },
@@ -69,6 +65,7 @@ export class ShiftService {
       data: {
         shift_id: dto.shift_id,
         user_id: dto.user_id,
+        date: dto.date,
         shop_id,
         notes: dto.notes ?? null,
       },
