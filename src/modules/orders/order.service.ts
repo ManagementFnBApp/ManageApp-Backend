@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { OrderDto, OrderReportDto, OrderResponseDto, ViewOrderDto } from 'src/dtos/oder.dto';
+import { OrderDto, OrderMonthReportDto, OrderReportDto, OrderResponseDto, ViewOrderDto } from 'src/dtos/oder.dto';
 import { OrderStatus } from 'src/global/globalEnum';
 import { PrismaService } from 'db/prisma.service';
 import { JwtPayloadDto } from 'src/dtos/login.dto';
@@ -243,18 +243,72 @@ export class OrderService {
     }));
   }
 
-  async orderReport(user: JwtPayloadDto): Promise<OrderReportDto> {
+  async orderReport(dto: OrderMonthReportDto, user: JwtPayloadDto): Promise<OrderReportDto> {
     if (!user.shop_id) {
       throw new BadRequestException('User does not belong to any shop');
     }
+
+    const startDate = new Date(Date.UTC(dto.year, dto.month - 1, 1));
+    const nextMonth = new Date(Date.UTC(dto.year, dto.month, 1));
+
+    const monthlyWhere = {
+      shift_user: {
+        shop_id: user.shop_id,
+        date: {
+          gte: startDate,
+          lt: nextMonth,
+        },
+      },
+    };
+
     const numberOfOrders = await this.prisma.orders.count({
       where: {
+        ...monthlyWhere,
+        order_status: OrderStatus.COMPLETED,
+      }
+    });
+
+    const orders = await this.prisma.orders.findMany({
+      where: {
+        ...monthlyWhere,
+        order_status: OrderStatus.COMPLETED,
+      },
+      select: {
+        total_amount: true,
         shift_user: {
-          shop_id: user.shop_id,
+          select: { date: true },
         }
       }
-    })
-    return { numberOfOrders };
+    });
+
+    const dailyMap = new Map<string, { numberOfOrders: number; totalAmount: number }>();
+    orders.forEach((order) => {
+      const dateStr = order.shift_user.date.toISOString().split('T')[0];
+      const current = dailyMap.get(dateStr) || { numberOfOrders: 0, totalAmount: 0 };
+      dailyMap.set(dateStr, {
+        numberOfOrders: current.numberOfOrders + 1,
+        totalAmount: current.totalAmount + Number(order.total_amount),
+      });
+    });
+
+    // 3. Chạy vòng lặp For để lấp đầy các ngày trong tháng (Fill gaps)
+    const report: { date: Date; numberOfOrders: number; totalAmount: number }[] = [];
+    const endDate = new Date(Date.UTC(dto.year, dto.month, 0));
+    const daysInMonth = endDate.getUTCDate();
+
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateObj = new Date(Date.UTC(dto.year, dto.month - 1, i));
+      const dateKey = dateObj.toISOString().split('T')[0];
+      const dailyData = dailyMap.get(dateKey);
+
+      report.push({
+        date: dateObj,
+        numberOfOrders: dailyData?.numberOfOrders || 0,
+        totalAmount: dailyData?.totalAmount || 0,
+      });
+    }
+
+    return { numberOfOrders, reportByDate: report };
   }
 
   transformToDto(order: any): OrderResponseDto {

@@ -48,6 +48,23 @@ export class OrderResponseDto {
   cancelledAt?: Date | null;
 }
 
+export class OrderMonthReportDto {
+  @IsNumber()
+  year: number;
+
+  @IsNumber()
+  month: number;
+}
+
 export class OrderReportDto {
   numberOfOrders: number;
+
+  @Type(() => OrderReportByDateDto)
+  reportByDate: OrderReportByDateDto[];
+}
+
+export class OrderReportByDateDto {
+  date: Date;
+  numberOfOrders: number;
+  totalAmount: number;
 }

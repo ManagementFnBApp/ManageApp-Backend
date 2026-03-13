@@ -1,6 +1,6 @@
 import { Body, Controller, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { OrderDto, OrderReportDto, OrderResponseDto, ViewOrderDto } from 'src/dtos/oder.dto';
+import { OrderDto, OrderMonthReportDto, OrderReportDto, OrderResponseDto, ViewOrderDto } from 'src/dtos/oder.dto';
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
 import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
 import { ApiTags } from '@nestjs/swagger';
@@ -78,9 +78,9 @@ export class OrderController {
 
   @Roles(Role.SHOPOWNER)
   @Post('report')
-  async orderReport(@GetUser() user: JwtPayloadDto): Promise<ResponseType<OrderReportDto>> {
+  async orderReport(@Body() dto: OrderMonthReportDto, @GetUser() user: JwtPayloadDto): Promise<ResponseType<OrderReportDto>> {
     return new ResponseData(
-      await this.orderService.orderReport(user),
+      await this.orderService.orderReport(dto, user),
       HttpStatus.SUCCESS,
       HttpMessage.SUCCESS,
     );
