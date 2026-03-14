@@ -26,6 +26,8 @@ import { CategoryModule } from './modules/categories/category.module';
 import { ShopCategoryModule } from './modules/shop-category/shop-category.module';
 import { ShiftModule } from './modules/shifts/shift.module';
 import { ShopProductModule } from './modules/shop-product/shop-product.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -44,6 +46,10 @@ import { ShopProductModule } from './modules/shop-product/shop-product.module';
           expiresIn: getJwtExpiresIn(configService),
         },
       }),
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads', // Đường dẫn ảo trên URL
     }),
     UserModule,
     AuthModule,

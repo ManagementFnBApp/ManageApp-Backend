@@ -247,6 +247,12 @@ export class OrderService {
     if (!user.shop_id) {
       throw new BadRequestException('User does not belong to any shop');
     }
+    const exsistingShop = await this.prisma.shop.findUnique({
+      where: { id: user.shop_id },
+    });
+    if (!exsistingShop) {
+      throw new BadRequestException('Shop does not exist');
+    }
 
     const startDate = new Date(Date.UTC(dto.year, dto.month - 1, 1));
     const nextMonth = new Date(Date.UTC(dto.year, dto.month, 1));
