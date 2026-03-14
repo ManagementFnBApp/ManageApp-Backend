@@ -9,6 +9,7 @@ import {
 import { Type } from 'class-transformer';
 
 export class CreateProductDto {
+  @Type(() => Number)
   @IsInt()
   @IsNotEmpty()
   categoryId: number;
@@ -16,10 +17,6 @@ export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
   productName: string;
-
-  @IsString()
-  @IsNotEmpty()
-  image: string;
 
   @IsString()
   @IsOptional()
@@ -56,10 +53,6 @@ export class UpdateProductDto {
   @IsString()
   @IsOptional()
   productName?: string;
-
-  @IsString()
-  @IsOptional()
-  image?: string;
 
   @IsString()
   @IsOptional()

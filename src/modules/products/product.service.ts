@@ -9,13 +9,20 @@ import {
   ProductResponseDto,
 } from '../../dtos/product.dto';
 import { PrismaService } from 'db/prisma.service';
+import { ConfigService } from '@nestjs/config';
+import { join } from 'path';
+import * as fs from 'fs/promises';
 
 @Injectable()
 export class ProductService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private configService: ConfigService,
+  ) { }
 
   async create(
     createProductDto: CreateProductDto,
+    imagePath: string,
   ): Promise<ProductResponseDto> {
     // Check if image already exists
 
@@ -28,11 +35,21 @@ export class ProductService {
       throw new NotFoundException('Category not found');
     }
 
+    const existingProduct = await this.prisma.product.findFirst({
+      where: {
+        barcode: createProductDto.barcode,
+      },
+    });
+
+    if (existingProduct) {
+      throw new ConflictException('Product with this barcode already exists');
+    }
+
     const product = await this.prisma.product.create({
       data: {
         category_id: createProductDto.categoryId,
         product_name: createProductDto.productName,
-        image: createProductDto.image,
+        image: this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath,
         barcode: createProductDto.barcode,
         description: createProductDto.description,
         measure_unit: createProductDto.measureUnit,
@@ -72,6 +89,7 @@ export class ProductService {
   async update(
     id: number,
     updateProductDto: UpdateProductDto,
+    imagePath?: string
   ): Promise<ProductResponseDto> {
     // Check if product exists
     const existingProduct = await this.prisma.product.findUnique({
@@ -98,7 +116,7 @@ export class ProductService {
       data: {
         category_id: updateProductDto.categoryId,
         product_name: updateProductDto.productName,
-        image: updateProductDto.image,
+        image: this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath,
         barcode: updateProductDto.barcode,
         description: updateProductDto.description,
         measure_unit: updateProductDto.measureUnit,
@@ -138,6 +156,15 @@ export class ProductService {
 
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+
+    const imagePath = join(process.cwd(), 'uploads', product.image);
+
+    try {
+      await fs.unlink(imagePath);
+    } catch (err) {
+      // Nếu file không tồn tại cũng không sao, chỉ cần log lại
+      console.error('Image path not exists:', err.message);
     }
 
     await this.prisma.product.delete({

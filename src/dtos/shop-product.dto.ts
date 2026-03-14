@@ -3,6 +3,7 @@ import { Exclude, Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateShopProductDto {
+    @Type(() => Number)
     @IsInt()
     @IsNotEmpty()
     categoryId: number;
@@ -12,11 +13,6 @@ export class CreateShopProductDto {
     productName: string;
 
     @IsString()
-    @IsNotEmpty()
-    image: string;
-
-    @IsString()
-    @IsOptional()
     barcode?: string;
 
     @IsString()
