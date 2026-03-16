@@ -1,41 +1,59 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'db/prisma.service';
+import { join } from 'path';
 import { CreateShopProductDto, ShopProductResponseDto, UpdateShopProductDto } from 'src/dtos/shop-product.dto';
+import * as fs from 'fs/promises';
 
 @Injectable()
 export class ShopProductService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
   ) { }
 
-  async create(createShopProductDto: CreateShopProductDto, shop_id: number): Promise<ShopProductResponseDto> {
+  async create(createShopProductDto: CreateShopProductDto, shop_id: number, imagePath: string): Promise<ShopProductResponseDto> {
     const [shop, category] = await Promise.all([
       this.prisma.shop.findUnique({ where: { id: shop_id } }),
       this.prisma.category.findUnique({ where: { id: createShopProductDto.categoryId } }),
     ]);
 
-    if (!shop) throw new NotFoundException(`Shop with id ${shop_id} not found`);
-    if (!category) throw new NotFoundException(`Category with id ${createShopProductDto.categoryId} not found`);
+    if (!shop) {
+      throw new NotFoundException(`Shop with id ${shop_id} not found`);
+    }
+    if (!category) {
+      throw new NotFoundException(`Category with id ${createShopProductDto.categoryId} not found`)
+    };
 
-    const shopProduct = await this.prisma.shopProduct.create({
-      data: {
-        shop_id,
-        category_id: createShopProductDto.categoryId,
-        product_name: createShopProductDto.productName,
-        image: createShopProductDto.image,
-        barcode: createShopProductDto.barcode,
-        description: createShopProductDto.description,
-        measure_unit: createShopProductDto.measureUnit,
-        list_price: createShopProductDto.listPrice,
-        import_price: createShopProductDto.importPrice,
-        is_active: createShopProductDto.isActive,
-      },
-      include: {
-        category: true,
-        shop: true,
+    try {
+      const shopProduct = await this.prisma.shopProduct.create({
+        data: {
+          shop_id,
+          category_id: createShopProductDto.categoryId,
+          product_name: createShopProductDto.productName,
+          image: this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath,
+          barcode: createShopProductDto.barcode,
+          description: createShopProductDto.description,
+          measure_unit: createShopProductDto.measureUnit,
+          list_price: createShopProductDto.listPrice,
+          import_price: createShopProductDto.importPrice,
+          is_active: createShopProductDto.isActive,
+        },
+        include: {
+          category: true,
+          shop: true,
+        }
+      });
+      return this.transformToResponseDto(shopProduct);
+    } catch (error) {
+      // Delete the uploaded image if an error occurs
+      try {
+        await fs.unlink(imagePath);
+      } catch (unlinkError) {
+        console.error('Failed to delete image after error:', unlinkError.message);
       }
-    })
-    return this.transformToResponseDto(shopProduct);
+      throw error;
+    }
   }
 
   async findAll(): Promise<ShopProductResponseDto[]> {
@@ -70,12 +88,15 @@ export class ShopProductService {
     return shopProducts.map((product) => this.transformToResponseDto(product));
   }
 
-  async update(id: number, updateShopProductDto: UpdateShopProductDto): Promise<ShopProductResponseDto> {
+  async update(id: number, updateShopProductDto: UpdateShopProductDto, imagePath?: string): Promise<ShopProductResponseDto> {
     const shopProduct = await this.prisma.shopProduct.update({
       where: {
         id,
       },
-      data: updateShopProductDto,
+      data: {
+        ...updateShopProductDto,
+        image: imagePath ? this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath : undefined,
+      },
     });
     return this.transformToResponseDto(shopProduct);
   }
@@ -88,6 +109,15 @@ export class ShopProductService {
 
       if (!shopProduct) {
         throw new NotFoundException(`Product with id ${id} not found`);
+      }
+
+      const imagePath = join(process.cwd(), 'uploads', shopProduct.image);
+
+      try {
+        await fs.unlink(imagePath);
+      } catch (err) {
+        // Nếu file không tồn tại cũng không sao, chỉ cần log lại
+        console.error('Image path not exists:', err.message);
       }
 
       if (shopProduct.shop_id !== shop_id) {
