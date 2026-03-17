@@ -51,7 +51,7 @@ export class ShopProductController {
     return new ResponseData<ShopProductResponseDto[]>(await this.shopProductService.findByShop(shop_id), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 
-  @Roles(Role.SHOPOWNER, Role.ADMIN)
+  @Roles(Role.SHOPOWNER)
   @UseInterceptors(FileInterceptor('image', {
     storage: diskStorage({
       destination: './uploads',
@@ -62,10 +62,14 @@ export class ShopProductController {
     }),
   }))
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateShopProductDto: UpdateShopProductDto, @GetUser() user: any, @UploadedFile() file: Express.Multer.File): Promise<ResponseType<ShopProductResponseDto>> {
-    const isAdmin = user.role === Role.ADMIN;
+  async update(
+    @Param('id') id: string, 
+    @Body() updateShopProductDto: UpdateShopProductDto,
+    @GetUser() user: any,
+    @UploadedFile() file: Express.Multer.File):
+    Promise<ResponseType<ShopProductResponseDto>> {
     const isShopOwnerWithShop = user.role === Role.SHOPOWNER && !!user.shop_id;
-    if (!isAdmin && !isShopOwnerWithShop) {
+    if (!isShopOwnerWithShop) {
       throw new ForbiddenException('You are not associated with any shop. Please contact your administrator.');
     }
     return new ResponseData(await this.shopProductService.update(+id, updateShopProductDto, file?.path), HttpStatus.OK, HttpMessage.SUCCESS);

@@ -95,7 +95,7 @@ export class ShopProductService {
       },
       data: {
         ...updateShopProductDto,
-        image: imagePath ? this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath : undefined,
+        ...(imagePath && { image: this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath }),
       },
     });
     return this.transformToResponseDto(shopProduct);

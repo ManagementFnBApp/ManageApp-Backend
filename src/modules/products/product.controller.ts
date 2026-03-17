@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   Query,
@@ -12,6 +11,7 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  Put,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto, UpdateProductDto } from '../../dtos/product.dto';
@@ -56,7 +56,7 @@ export class ProductController {
     return this.productService.findOne(id);
   }
 
-  @Patch(':id')
+  @Put(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateProductDto: UpdateProductDto,
