@@ -56,8 +56,6 @@ export class ShopProductResponseDto {
 
     product_name: string;
 
-    image: string;
-
     barcode?: string;
 
     description?: string;

@@ -45,21 +45,31 @@ export class ProductService {
       throw new ConflictException('Product with this barcode already exists');
     }
 
-    const product = await this.prisma.product.create({
-      data: {
-        category_id: createProductDto.categoryId,
-        product_name: createProductDto.productName,
-        image: this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath,
-        barcode: createProductDto.barcode,
-        description: createProductDto.description,
-        measure_unit: createProductDto.measureUnit,
-        list_price: createProductDto.listPrice,
-        import_price: createProductDto.importPrice,
-        is_active: createProductDto.isActive ?? true,
-      },
-    });
+    try {
+      const product = await this.prisma.product.create({
+        data: {
+          category_id: createProductDto.categoryId,
+          product_name: createProductDto.productName,
+          image: this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath,
+          barcode: createProductDto.barcode,
+          description: createProductDto.description,
+          measure_unit: createProductDto.measureUnit,
+          list_price: createProductDto.listPrice,
+          import_price: createProductDto.importPrice,
+          is_active: createProductDto.isActive ?? true,
+        },
+      });
 
-    return this.mapToResponseDto(product);
+      return this.mapToResponseDto(product);
+    } catch (error) {
+      // Delete the uploaded image if an error occurs
+      try {
+        await fs.unlink(imagePath);
+      } catch (unlinkError) {
+        console.error('Failed to delete image after error:', unlinkError.message);
+      }
+      throw error;
+    }
   }
 
   async findAll(isActive?: boolean): Promise<ProductResponseDto[]> {
