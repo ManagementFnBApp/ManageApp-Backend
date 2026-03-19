@@ -108,7 +108,7 @@ export class ShiftController {
    * Xem lịch shift của 1 nhân viên cụ thể
    */
   @Get('users/staff/:userId')
-  @Roles(Role.SHOPOWNER)
+  @Roles(Role.SHOPOWNER, Role.STAFF)
   async getStaffShiftUsers(
     @Param('userId') userId: number,
     @GetUser('shop_id') shop_id: number,
