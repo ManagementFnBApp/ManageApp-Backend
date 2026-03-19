@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   CreateInventoryDto,
@@ -138,13 +139,13 @@ export class InventoryService {
   async createItem(
     createInventoryItemDto: CreateInventoryItemDto,
   ): Promise<InventoryItemResponseDto> {
-    // Check if product exists
-    const product = await this.prisma.product.findUnique({
-      where: { id: createInventoryItemDto.productId },
-    });
+    const hasSystemProduct = createInventoryItemDto.productId != null;
+    const hasShopProduct = createInventoryItemDto.shopProductId != null;
 
-    if (!product) {
-      throw new NotFoundException('Product not found');
+    if ((hasSystemProduct && hasShopProduct) || (!hasSystemProduct && !hasShopProduct)) {
+      throw new BadRequestException(
+        'Exactly one of productId or shopProductId is required',
+      );
     }
 
     // Check if inventory exists
@@ -156,11 +157,40 @@ export class InventoryService {
       throw new NotFoundException('Inventory not found');
     }
 
+    if (hasSystemProduct) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: createInventoryItemDto.productId },
+      });
+
+      if (!product) {
+        throw new NotFoundException('Product not found');
+      }
+    }
+
+    if (hasShopProduct) {
+      const shopProduct = await this.prisma.shopProduct.findUnique({
+        where: { id: createInventoryItemDto.shopProductId },
+      });
+
+      if (!shopProduct) {
+        throw new NotFoundException('Shop product not found');
+      }
+
+      if (shopProduct.shop_id !== inventory.shop_id) {
+        throw new BadRequestException(
+          'Shop product does not belong to this inventory shop',
+        );
+      }
+    }
+
     // Check if item already exists
     const existingItem = await this.prisma.inventoryItem.findFirst({
       where: {
-        product_id: createInventoryItemDto.productId,
         inventory_id: createInventoryItemDto.inventoryId,
+        product_id: hasSystemProduct ? createInventoryItemDto.productId : null,
+        shop_product_id: hasShopProduct
+          ? createInventoryItemDto.shopProductId
+          : null,
       },
     });
 
@@ -172,7 +202,8 @@ export class InventoryService {
 
     const inventoryItem = await this.prisma.inventoryItem.create({
       data: {
-        product_id: createInventoryItemDto.productId,
+        product_id: hasSystemProduct ? createInventoryItemDto.productId : null,
+        shop_product_id: hasShopProduct ? createInventoryItemDto.shopProductId : null,
         inventory_id: createInventoryItemDto.inventoryId,
         quantity: createInventoryItemDto.quantity ?? 0,
         reserved_quantity: createInventoryItemDto.reservedQuantity ?? 0,
@@ -185,11 +216,19 @@ export class InventoryService {
   async findAllItems(
     inventoryId?: number,
     productId?: number,
+    shopProductId?: number,
   ): Promise<InventoryItemResponseDto[]> {
+    if (productId != null && shopProductId != null) {
+      throw new BadRequestException(
+        'Use either productId or shopProductId filter, not both',
+      );
+    }
+
     const items = await this.prisma.inventoryItem.findMany({
       where: {
         inventory_id: inventoryId,
         product_id: productId,
+        shop_product_id: shopProductId,
       },
       orderBy: { updated_at: 'desc' },
     });
@@ -226,11 +265,76 @@ export class InventoryService {
       throw new NotFoundException(`Inventory item with ID ${id} not found`);
     }
 
+    if (
+      updateInventoryItemDto.productId != null &&
+      updateInventoryItemDto.shopProductId != null
+    ) {
+      throw new BadRequestException(
+        'Provide only one of productId or shopProductId',
+      );
+    }
+
+    const targetInventoryId =
+      updateInventoryItemDto.inventoryId ?? existingItem.inventory_id;
+    const targetInventory = await this.prisma.inventory.findUnique({
+      where: { id: targetInventoryId },
+    });
+
+    if (!targetInventory) {
+      throw new NotFoundException('Inventory not found');
+    }
+
+    let nextProductId: number | null = existingItem.product_id;
+    let nextShopProductId: number | null = existingItem.shop_product_id;
+
+    if (updateInventoryItemDto.productId != null) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: updateInventoryItemDto.productId },
+      });
+      if (!product) {
+        throw new NotFoundException('Product not found');
+      }
+      nextProductId = updateInventoryItemDto.productId;
+      nextShopProductId = null;
+    }
+
+    if (updateInventoryItemDto.shopProductId != null) {
+      const shopProduct = await this.prisma.shopProduct.findUnique({
+        where: { id: updateInventoryItemDto.shopProductId },
+      });
+      if (!shopProduct) {
+        throw new NotFoundException('Shop product not found');
+      }
+      if (shopProduct.shop_id !== targetInventory.shop_id) {
+        throw new BadRequestException(
+          'Shop product does not belong to this inventory shop',
+        );
+      }
+      nextShopProductId = updateInventoryItemDto.shopProductId;
+      nextProductId = null;
+    }
+
+    const duplicate = await this.prisma.inventoryItem.findFirst({
+      where: {
+        id: { not: id },
+        inventory_id: targetInventoryId,
+        product_id: nextProductId,
+        shop_product_id: nextShopProductId,
+      },
+    });
+
+    if (duplicate) {
+      throw new ConflictException(
+        'Inventory item for this product already exists in this inventory',
+      );
+    }
+
     const item = await this.prisma.inventoryItem.update({
       where: { id: id },
       data: {
-        product_id: updateInventoryItemDto.productId,
-        inventory_id: updateInventoryItemDto.inventoryId,
+        product_id: nextProductId,
+        shop_product_id: nextShopProductId,
+        inventory_id: targetInventoryId,
         quantity: updateInventoryItemDto.quantity,
         reserved_quantity: updateInventoryItemDto.reservedQuantity,
       },
@@ -276,6 +380,8 @@ export class InventoryService {
     return {
       inventoryItemId: item.id,
       productId: item.product_id,
+      shopProductId: item.shop_product_id,
+      productType: item.product_id ? 'SYSTEM' : 'SHOP',
       inventoryId: item.inventory_id,
       quantity: item.quantity,
       reservedQuantity: item.reserved_quantity,
