@@ -7,7 +7,7 @@ import {
 import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
 import { ProfileService } from './profile.service';
-import { Roles } from 'src/decorators/decorators';
+import { GetUser, Roles } from 'src/decorators/decorators';
 
 @Controller('profiles')
 export class ProfileController {
@@ -16,9 +16,10 @@ export class ProfileController {
   @Post()
   async createProfile(
     @Body() body: CreateProfileDto,
+    @GetUser('id') userId: number,
   ): Promise<ResponseType<ProfileResponseDto>> {
     return new ResponseData(
-      await this.profileService.createProfile(body),
+      await this.profileService.createProfile(body, userId),
       HttpStatus.SUCCESS,
       HttpMessage.SUCCESS,
     );
@@ -37,10 +38,11 @@ export class ProfileController {
   @Put(':id')
   async updateProfile(
     @Param('id') id: string,
+    @GetUser('id') userId: number,
     @Body() body: UpdateProfileDto,
   ): Promise<ResponseType<ProfileResponseDto>> {
     return new ResponseData(
-      await this.profileService.updateProfile(id, body),
+      await this.profileService.updateProfile(id, userId, body),
       HttpStatus.SUCCESS,
       HttpMessage.SUCCESS,
     );

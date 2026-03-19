@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'db/prisma.service';
 import {
   CreateProfileDto,
@@ -10,10 +10,10 @@ import {
 export class ProfileService {
   constructor(private prisma: PrismaService) { }
 
-  async createProfile(data: CreateProfileDto): Promise<ProfileResponseDto> {
+  async createProfile(data: CreateProfileDto, userId: number): Promise<ProfileResponseDto> {
     const profile = await this.prisma.profile.create({
       data: {
-        user_id: data.user_id,
+        user_id: userId,
         full_name: data.full_name ?? '',
         avatar: data.avatar,
         phone: data.phone,
@@ -33,6 +33,7 @@ export class ProfileService {
 
   async updateProfile(
     id: string,
+    userId: number,
     data: UpdateProfileDto,
   ): Promise<ProfileResponseDto> {
     const existingProfile = await this.prisma.profile.findUnique({
@@ -41,6 +42,10 @@ export class ProfileService {
 
     if (!existingProfile) {
       throw new NotFoundException(`Profile with ID ${id} not found`);
+    }
+
+    if (existingProfile.user_id !== userId) {
+      throw new ForbiddenException('You are not the owner of this profile');
     }
 
     const updatedProfile = await this.prisma.profile.update({
@@ -73,7 +78,7 @@ export class ProfileService {
 
   private transformToDto(profile: any): ProfileResponseDto {
     return {
-      id: profile.id,
+      profile_id: profile.id,
       user_id: profile.user_id,
       full_name: profile.full_name,
       avatar: profile.avatar,

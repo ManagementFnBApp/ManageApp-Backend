@@ -1,9 +1,6 @@
 import { IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateProfileDto {
-    @IsInt()
-    user_id: number;
-
     @IsString()
     @IsOptional()
     full_name?: string;
@@ -32,7 +29,7 @@ export class UpdateProfileDto {
 }
 
 export class ProfileResponseDto {
-    id: string;
+    profile_id: string;
     user_id: number;
     full_name: string;
     avatar?: string | null;
