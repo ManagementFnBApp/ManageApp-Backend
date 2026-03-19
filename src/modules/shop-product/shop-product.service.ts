@@ -89,13 +89,39 @@ export class ShopProductService {
   }
 
   async update(id: number, updateShopProductDto: UpdateShopProductDto, imagePath?: string): Promise<ShopProductResponseDto> {
+    const existingProduct = await this.prisma.shopProduct.findUnique({
+      where: { id: id },
+    });
+
+    if (!existingProduct) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+
+    // If category is being updated, check if it exists
+    if (updateShopProductDto.categoryId) {
+      const category = await this.prisma.category.findUnique({
+        where: { id: updateShopProductDto.categoryId },
+      });
+
+      if (!category) {
+        throw new NotFoundException('Category not found');
+      }
+    };
+
     const shopProduct = await this.prisma.shopProduct.update({
       where: {
         id,
       },
       data: {
-        ...updateShopProductDto,
-        ...(imagePath && { image: this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath }),
+        category_id: updateShopProductDto.categoryId ? updateShopProductDto.categoryId : existingProduct.category_id,
+        product_name: updateShopProductDto.productName ? updateShopProductDto.productName : existingProduct.product_name,
+        image: imagePath ? (this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath) : existingProduct.image,
+        barcode: updateShopProductDto.barcode ? updateShopProductDto.barcode : existingProduct.barcode,
+        description: updateShopProductDto.description ? updateShopProductDto.description : existingProduct.description,
+        measure_unit: updateShopProductDto.measureUnit ? updateShopProductDto.measureUnit : existingProduct.measure_unit,
+        list_price: updateShopProductDto.listPrice ? updateShopProductDto.listPrice : existingProduct.list_price,
+        import_price: updateShopProductDto.importPrice ? updateShopProductDto.importPrice : existingProduct.import_price,
+        is_active: updateShopProductDto.isActive ? updateShopProductDto.isActive : existingProduct.is_active,
       },
     });
     return this.transformToResponseDto(shopProduct);

@@ -124,15 +124,15 @@ export class ProductService {
     const product = await this.prisma.product.update({
       where: { id: id },
       data: {
-        category_id: updateProductDto.categoryId,
-        product_name: updateProductDto.productName,
-        image: this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath,
-        barcode: updateProductDto.barcode,
-        description: updateProductDto.description,
-        measure_unit: updateProductDto.measureUnit,
-        list_price: updateProductDto.listPrice,
-        import_price: updateProductDto.importPrice,
-        is_active: updateProductDto.isActive,
+        category_id: updateProductDto.categoryId? updateProductDto.categoryId : existingProduct.category_id,
+        product_name: updateProductDto.productName? updateProductDto.productName : existingProduct.product_name,
+        image: imagePath? (this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath) : existingProduct.image,
+        barcode: updateProductDto.barcode? updateProductDto.barcode : existingProduct.barcode,
+        description: updateProductDto.description? updateProductDto.description : existingProduct.description,
+        measure_unit: updateProductDto.measureUnit? updateProductDto.measureUnit : existingProduct.measure_unit,
+        list_price: updateProductDto.listPrice? updateProductDto.listPrice : existingProduct.list_price,
+        import_price: updateProductDto.importPrice? updateProductDto.importPrice : existingProduct.import_price,
+        is_active: updateProductDto.isActive? updateProductDto.isActive : existingProduct.is_active,
       },
     });
 

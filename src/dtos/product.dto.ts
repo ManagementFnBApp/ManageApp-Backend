@@ -46,25 +46,32 @@ export class CreateProductDto {
 }
 
 export class UpdateProductDto {
+  @IsOptional()
   @IsInt()
   categoryId?: number;
 
+  @IsOptional()
   @IsString()
   productName?: string;
 
+  @IsOptional()
   @IsString()
   barcode?: string;
 
+  @IsOptional()
   @IsString()
   description?: string;
 
+  @IsOptional()
   @IsString()
   measureUnit?: string;
 
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
   listPrice?: number;
 
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
   importPrice?: number;
