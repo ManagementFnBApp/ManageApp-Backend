@@ -13,6 +13,7 @@ import {
   InventoryItemResponseDto,
 } from '../../dtos/inventory.dto';
 import { PrismaService } from 'db/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class InventoryService {
@@ -200,15 +201,27 @@ export class InventoryService {
       );
     }
 
-    const inventoryItem = await this.prisma.inventoryItem.create({
-      data: {
-        product_id: hasSystemProduct ? createInventoryItemDto.productId : null,
-        shop_product_id: hasShopProduct ? createInventoryItemDto.shopProductId : null,
-        inventory_id: createInventoryItemDto.inventoryId,
-        quantity: createInventoryItemDto.quantity ?? 0,
-        reserved_quantity: createInventoryItemDto.reservedQuantity ?? 0,
-      },
-    });
+    const inventoryItem = await this.prisma.inventoryItem
+      .create({
+        data: {
+          product_id: hasSystemProduct ? createInventoryItemDto.productId : null,
+          shop_product_id: hasShopProduct ? createInventoryItemDto.shopProductId : null,
+          inventory_id: createInventoryItemDto.inventoryId,
+          quantity: createInventoryItemDto.quantity ?? 0,
+          reserved_quantity: createInventoryItemDto.reservedQuantity ?? 0,
+        },
+      })
+      .catch((error) => {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new ConflictException(
+            'Inventory item for this product already exists in this inventory',
+          );
+        }
+        throw error;
+      });
 
     return this.mapToInventoryItemResponseDto(inventoryItem);
   }
@@ -329,16 +342,28 @@ export class InventoryService {
       );
     }
 
-    const item = await this.prisma.inventoryItem.update({
-      where: { id: id },
-      data: {
-        product_id: nextProductId,
-        shop_product_id: nextShopProductId,
-        inventory_id: targetInventoryId,
-        quantity: updateInventoryItemDto.quantity,
-        reserved_quantity: updateInventoryItemDto.reservedQuantity,
-      },
-    });
+    const item = await this.prisma.inventoryItem
+      .update({
+        where: { id: id },
+        data: {
+          product_id: nextProductId,
+          shop_product_id: nextShopProductId,
+          inventory_id: targetInventoryId,
+          quantity: updateInventoryItemDto.quantity,
+          reserved_quantity: updateInventoryItemDto.reservedQuantity,
+        },
+      })
+      .catch((error) => {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new ConflictException(
+            'Inventory item for this product already exists in this inventory',
+          );
+        }
+        throw error;
+      });
 
     return this.mapToInventoryItemResponseDto(item);
   }
