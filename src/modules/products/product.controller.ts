@@ -12,15 +12,17 @@ import {
   UseInterceptors,
   UploadedFile,
   Put,
+  HttpStatus,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
-import { CreateProductDto, UpdateProductDto } from '../../dtos/product.dto';
+import { CreateProductDto, ProductResponseDto, UpdateProductDto } from '../../dtos/product.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { Public, Roles } from 'src/decorators/decorators';
-import { Role } from 'src/global/globalEnum';
+import { HttpMessage, Role } from 'src/global/globalEnum';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { ResponseData, ResponseType } from 'src/global/globalResponse';
 
 @Controller('products')
 @UseGuards(AuthGuard)
@@ -38,8 +40,8 @@ export class ProductController {
     }),
   }))
   @Post()
-  create(@Body() createProductDto: CreateProductDto, @UploadedFile() file: Express.Multer.File) {
-    return this.productService.create(createProductDto, file.path);
+  async create(@Body() createProductDto: CreateProductDto, @UploadedFile() file: Express.Multer.File): Promise<ResponseType<ProductResponseDto>> {
+    return new ResponseData(await this.productService.create(createProductDto, file.path), HttpStatus.CREATED, HttpMessage.SUCCESS);
   }
 
   @Public()
@@ -56,12 +58,13 @@ export class ProductController {
     return this.productService.findOne(id);
   }
 
+  @Roles(Role.ADMIN)
   @Put(':id')
-  update(
+  async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateProductDto: UpdateProductDto,
-  ) {
-    return this.productService.update(id, updateProductDto);
+  ): Promise<ResponseType<ProductResponseDto>> {
+    return new ResponseData(await this.productService.update(id, updateProductDto), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 
   @Delete(':id')

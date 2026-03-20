@@ -25,6 +25,22 @@ export class ShopProductService {
       throw new NotFoundException(`Category with id ${createShopProductDto.categoryId} not found`)
     };
 
+    const existingShopProduct = await this.prisma.shopProduct.findFirst({
+      where: {
+        barcode: createShopProductDto.barcode,
+      }
+    });
+
+    const existingProduct = await this.prisma.product.findFirst({
+      where: {
+        barcode: createShopProductDto.barcode,
+      }
+    });
+
+    if(existingProduct || existingShopProduct) {
+      throw new BadRequestException(`Product with barcode ${createShopProductDto.barcode} already exists`);
+    }
+
     try {
       const shopProduct = await this.prisma.shopProduct.create({
         data: {
@@ -88,17 +104,29 @@ export class ShopProductService {
     return shopProducts.map((product) => this.transformToResponseDto(product));
   }
 
-  async update(
-    id: number,
-    updateShopProductDto: UpdateShopProductDto,
-    imagePath?: string,
-  ): Promise<ShopProductResponseDto> {
-    // Lấy sản phẩm hiện tại để dùng giá trị mặc định
-    const existing = await this.prisma.shopProduct.findUnique({
-      where: { id },
-      include: {
-        shop: true,
-        category: true,
+  async update(id: number, updateShopProductDto: UpdateShopProductDto, imagePath?: string): Promise<ShopProductResponseDto> {
+    const existingProduct = await this.prisma.shopProduct.findUnique({
+      where: { id: id },
+    });
+
+    if (!existingProduct) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+
+    // If category is being updated, check if it exists
+    if (updateShopProductDto.categoryId) {
+      const category = await this.prisma.category.findUnique({
+        where: { id: updateShopProductDto.categoryId },
+      });
+
+      if (!category) {
+        throw new NotFoundException('Category not found');
+      }
+    };
+
+    const shopProduct = await this.prisma.shopProduct.update({
+      where: {
+        id,
       },
     });
 
@@ -121,30 +149,15 @@ export class ShopProductService {
     const updated = await this.prisma.shopProduct.update({
       where: { id },
       data: {
-        // shop_id không cho FE sửa
-        shop_id: existing.shop_id,
-        category_id:
-          updateShopProductDto.categoryId ?? existing.category_id,
-        product_name:
-          updateShopProductDto.productName ?? existing.product_name,
-        image: imagePath
-          ? this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath
-          : existing.image,
-        barcode: updateShopProductDto.barcode ?? existing.barcode,
-        description:
-          updateShopProductDto.description ?? existing.description,
-        measure_unit:
-          updateShopProductDto.measureUnit ?? existing.measure_unit,
-        list_price:
-          updateShopProductDto.listPrice ?? existing.list_price,
-        import_price:
-          updateShopProductDto.importPrice ?? existing.import_price,
-        is_active:
-          updateShopProductDto.isActive ?? existing.is_active,
-      },
-      include: {
-        shop: true,
-        category: true,
+        category_id: updateShopProductDto.categoryId !== undefined ? updateShopProductDto.categoryId : existingProduct.category_id,
+        product_name: updateShopProductDto.productName !== undefined ? updateShopProductDto.productName : existingProduct.product_name,
+        image: imagePath !== undefined ? (this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath) : existingProduct.image,
+        barcode: updateShopProductDto.barcode !== undefined ? updateShopProductDto.barcode : existingProduct.barcode,
+        description: updateShopProductDto.description !== undefined ? updateShopProductDto.description : existingProduct.description,
+        measure_unit: updateShopProductDto.measureUnit !== undefined ? updateShopProductDto.measureUnit : existingProduct.measure_unit,
+        list_price: updateShopProductDto.listPrice !== undefined ? updateShopProductDto.listPrice : existingProduct.list_price,
+        import_price: updateShopProductDto.importPrice !== undefined ? updateShopProductDto.importPrice : existingProduct.import_price,
+        is_active: updateShopProductDto.isActive !== undefined ? updateShopProductDto.isActive : existingProduct.is_active,
       },
     });
 

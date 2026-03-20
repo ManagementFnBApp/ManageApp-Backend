@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   CreateProductDto,
@@ -12,6 +13,7 @@ import { PrismaService } from 'db/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
 import * as fs from 'fs/promises';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class ProductService {
@@ -41,7 +43,13 @@ export class ProductService {
       },
     });
 
-    if (existingProduct) {
+    const existingShopProduct = await this.prisma.shopProduct.findFirst({
+      where: {
+        barcode: createProductDto.barcode,
+      }
+    });
+
+    if (existingProduct || existingShopProduct) {
       throw new ConflictException('Product with this barcode already exists');
     }
 
@@ -121,25 +129,26 @@ export class ProductService {
       }
     }
 
-    const product = await this.prisma.product.update({
-      where: { id: id },
-      data: {
-        category_id: updateProductDto.categoryId,
-        product_name: updateProductDto.productName,
-        // Giữ nguyên ảnh nếu endpoint update không cung cấp imagePath
-        image: imagePath
-          ? this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath
-          : existingProduct.image,
-        barcode: updateProductDto.barcode,
-        description: updateProductDto.description,
-        measure_unit: updateProductDto.measureUnit,
-        list_price: updateProductDto.listPrice,
-        import_price: updateProductDto.importPrice,
-        is_active: updateProductDto.isActive,
-      },
-    });
+    try {
+      const product = await this.prisma.product.update({
+        where: { id: id },
+        data: {
+          category_id: updateProductDto.categoryId !== undefined ? updateProductDto.categoryId : existingProduct.category_id,
+          product_name: updateProductDto.productName !== undefined ? updateProductDto.productName : existingProduct.product_name,
+          image: imagePath !== undefined ? (this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath) : existingProduct.image,
+          barcode: updateProductDto.barcode !== undefined ? updateProductDto.barcode : existingProduct.barcode,
+          description: updateProductDto.description !== undefined ? updateProductDto.description : existingProduct.description,
+          measure_unit: updateProductDto.measureUnit !== undefined ? updateProductDto.measureUnit : existingProduct.measure_unit,
+          list_price: updateProductDto.listPrice !== undefined ? updateProductDto.listPrice : existingProduct.list_price,
+          import_price: updateProductDto.importPrice !== undefined ? updateProductDto.importPrice : existingProduct.import_price,
+          is_active: updateProductDto.isActive !== undefined ? updateProductDto.isActive : existingProduct.is_active,
+        },
+      });
 
-    return this.mapToResponseDto(product);
+      return plainToInstance(ProductResponseDto, this.mapToResponseDto(product));
+    } catch (error) {
+      throw new BadRequestException('Failed to update product');
+    }
   }
 
   async remove(id: number): Promise<{ message: string }> {
