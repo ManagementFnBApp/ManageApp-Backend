@@ -88,17 +88,67 @@ export class ShopProductService {
     return shopProducts.map((product) => this.transformToResponseDto(product));
   }
 
-  async update(id: number, updateShopProductDto: UpdateShopProductDto, imagePath?: string): Promise<ShopProductResponseDto> {
-    const shopProduct = await this.prisma.shopProduct.update({
-      where: {
-        id,
-      },
-      data: {
-        ...updateShopProductDto,
-        ...(imagePath && { image: this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath }),
+  async update(
+    id: number,
+    updateShopProductDto: UpdateShopProductDto,
+    imagePath?: string,
+  ): Promise<ShopProductResponseDto> {
+    // Lấy sản phẩm hiện tại để dùng giá trị mặc định
+    const existing = await this.prisma.shopProduct.findUnique({
+      where: { id },
+      include: {
+        shop: true,
+        category: true,
       },
     });
-    return this.transformToResponseDto(shopProduct);
+
+    if (!existing) {
+      throw new NotFoundException(`Product with id ${id} not found`);
+    }
+
+    // Nếu có cập nhật categoryId thì kiểm tra category tồn tại
+    if (updateShopProductDto.categoryId !== undefined) {
+      const category = await this.prisma.category.findUnique({
+        where: { id: updateShopProductDto.categoryId },
+      });
+      if (!category) {
+        throw new NotFoundException(
+          `Category with id ${updateShopProductDto.categoryId} not found`,
+        );
+      }
+    }
+
+    const updated = await this.prisma.shopProduct.update({
+      where: { id },
+      data: {
+        // shop_id không cho FE sửa
+        shop_id: existing.shop_id,
+        category_id:
+          updateShopProductDto.categoryId ?? existing.category_id,
+        product_name:
+          updateShopProductDto.productName ?? existing.product_name,
+        image: imagePath
+          ? this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath
+          : existing.image,
+        barcode: updateShopProductDto.barcode ?? existing.barcode,
+        description:
+          updateShopProductDto.description ?? existing.description,
+        measure_unit:
+          updateShopProductDto.measureUnit ?? existing.measure_unit,
+        list_price:
+          updateShopProductDto.listPrice ?? existing.list_price,
+        import_price:
+          updateShopProductDto.importPrice ?? existing.import_price,
+        is_active:
+          updateShopProductDto.isActive ?? existing.is_active,
+      },
+      include: {
+        shop: true,
+        category: true,
+      },
+    });
+
+    return this.transformToResponseDto(updated);
   }
 
   async remove(id: number, shop_id: number, skipOwnerCheck = false): Promise<{ message: string }> {

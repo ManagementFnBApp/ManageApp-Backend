@@ -126,7 +126,10 @@ export class ProductService {
       data: {
         category_id: updateProductDto.categoryId,
         product_name: updateProductDto.productName,
-        image: this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath,
+        // Giữ nguyên ảnh nếu endpoint update không cung cấp imagePath
+        image: imagePath
+          ? this.configService.get<string>('SERVER_IMAGE_URL') + '/' + imagePath
+          : existingProduct.image,
         barcode: updateProductDto.barcode,
         description: updateProductDto.description,
         measure_unit: updateProductDto.measureUnit,

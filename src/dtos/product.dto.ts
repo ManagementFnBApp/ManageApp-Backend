@@ -40,6 +40,7 @@ export class CreateProductDto {
   @Type(() => Number)
   importPrice: number;
 
+  @Type(() => Boolean)
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
@@ -69,6 +70,7 @@ export class UpdateProductDto {
   @Type(() => Number)
   importPrice?: number;
 
+  @Type(() => Boolean)
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
