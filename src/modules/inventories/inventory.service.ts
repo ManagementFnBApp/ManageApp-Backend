@@ -377,11 +377,29 @@ export class InventoryService {
   }
 
   private mapToInventoryItemResponseDto(item: any): InventoryItemResponseDto {
+    const hasSystemProduct =
+      item.product_id !== null && item.product_id !== undefined;
+    const hasShopProduct =
+      item.shop_product_id !== null && item.shop_product_id !== undefined;
+
+    let productType: InventoryItemResponseDto['productType'];
+
+    if (hasSystemProduct && !hasShopProduct) {
+      productType = 'SYSTEM';
+    } else if (!hasSystemProduct && hasShopProduct) {
+      productType = 'SHOP';
+    } else {
+      // Both identifiers set or both missing: invalid state
+      throw new BadRequestException(
+        'Inventory item must have exactly one of product_id or shop_product_id defined',
+      );
+    }
+
     return {
       inventoryItemId: item.id,
       productId: item.product_id,
       shopProductId: item.shop_product_id,
-      productType: item.product_id ? 'SYSTEM' : 'SHOP',
+      productType,
       inventoryId: item.inventory_id,
       quantity: item.quantity,
       reservedQuantity: item.reserved_quantity,
