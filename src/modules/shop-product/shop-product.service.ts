@@ -174,12 +174,18 @@ export class ShopProductService {
   }
 
   async getMenu(user: JwtPayloadDto) {
+    if (user.shop_id == null) {
+      throw new BadRequestException('User does not belong to any shop');
+    }
+
+    const shopId = Number(user.shop_id);
+    
     const shopProducts = await this.prisma.shopProduct.findMany({
       include: {
         inventory_items: {
           where: {
             inventory: {
-              shop_id: user.shop_id,
+              shop_id: shopId,
             },
           },
           select: {

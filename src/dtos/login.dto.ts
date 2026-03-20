@@ -5,8 +5,8 @@ export class JwtPayloadDto {
   id: number; // user ID
   username?: string;
   role: string | null; // or permissions: string[]
-  owner_manager_id: number | null; // Để check SHOPOWNER gốc
-  shop_id: number | undefined; // Để check SHOP STAFF
+  owner_manager_id?: number | null; // Để check SHOPOWNER gốc
+  shop_id: number | undefined | null; // Để check SHOP STAFF
 }
 
 export class LoginDto {
