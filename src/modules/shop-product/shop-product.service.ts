@@ -4,6 +4,7 @@ import { PrismaService } from 'db/prisma.service';
 import { join } from 'path';
 import { CreateShopProductDto, ShopProductResponseDto, UpdateShopProductDto } from 'src/dtos/shop-product.dto';
 import * as fs from 'fs/promises';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 
 @Injectable()
 export class ShopProductService {
@@ -37,7 +38,7 @@ export class ShopProductService {
       }
     });
 
-    if(existingProduct || existingShopProduct) {
+    if (existingProduct || existingShopProduct) {
       throw new BadRequestException(`Product with barcode ${createShopProductDto.barcode} already exists`);
     }
 
@@ -124,28 +125,6 @@ export class ShopProductService {
       }
     };
 
-    const shopProduct = await this.prisma.shopProduct.update({
-      where: {
-        id,
-      },
-    });
-
-    if (!existing) {
-      throw new NotFoundException(`Product with id ${id} not found`);
-    }
-
-    // Nếu có cập nhật categoryId thì kiểm tra category tồn tại
-    if (updateShopProductDto.categoryId !== undefined) {
-      const category = await this.prisma.category.findUnique({
-        where: { id: updateShopProductDto.categoryId },
-      });
-      if (!category) {
-        throw new NotFoundException(
-          `Category with id ${updateShopProductDto.categoryId} not found`,
-        );
-      }
-    }
-
     const updated = await this.prisma.shopProduct.update({
       where: { id },
       data: {
@@ -192,6 +171,35 @@ export class ShopProductService {
     });
 
     return { message: 'Product removed successfully' };
+  }
+
+  async getMenu(user: JwtPayloadDto) {
+    const shopProducts = await this.prisma.shopProduct.findMany({
+      include: {
+        inventory_items: {
+          where: {
+            inventory: {
+              shop_id: user.shop_id,
+            },
+          },
+          select: {
+            quantity: true,
+          },
+        },
+      },
+    });
+
+    return shopProducts.map((shopProduct) => {
+      const totalQuantity = shopProduct.inventory_items.reduce(
+        (sum, item) => sum + item.quantity,
+        0,
+      );
+
+      return {
+        ...this.transformToResponseDto(shopProduct),
+        quantity: totalQuantity
+      };
+    });
   }
 
   transformToResponseDto(shopProduct: any) {

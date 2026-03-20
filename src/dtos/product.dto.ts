@@ -97,3 +97,19 @@ export class ProductResponseDto {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export class ProductMenuDto {
+  productId: number;
+  categoryId: number;
+  productName: string;
+  image: string;
+  barcode?: string | null;
+  quantity: number;
+  description?: string | null;
+  measureUnit?: string | null;
+  listPrice: number;
+  importPrice: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}

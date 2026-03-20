@@ -7,6 +7,7 @@ import { ResponseData, ResponseType } from 'src/global/globalResponse';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 
 @Controller('shop-products')
 export class ShopProductController {
@@ -88,5 +89,11 @@ export class ShopProductController {
   @Delete('admin/:id')
   async removeAdmin(@Param('id') id: string): Promise<ResponseType<{ message: string }>> {
     return new ResponseData(await this.shopProductService.remove(+id, 0, true), HttpStatus.OK, HttpMessage.SUCCESS);
+  }
+
+  @Roles(Role.SHOPOWNER, Role.STAFF)
+  @Get('menu')
+  async getMenu(@GetUser() user: JwtPayloadDto) {
+    return new ResponseData(await this.shopProductService.getMenu(user), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 }

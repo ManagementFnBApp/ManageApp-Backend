@@ -64,3 +64,22 @@ export class ShopProductResponseDto {
 
     is_active: boolean;
 }
+
+export class ShopProductMenuDto {
+    shopProductId: number;
+    categoryId: number;
+    shop_id: number;
+    shop_name: string;
+    category_name: string;
+    productName: string;
+    image: string;
+    barcode?: string | null;
+    quantity: number;
+    description?: string | null;
+    measureUnit?: string | null;
+    listPrice: number;
+    importPrice: number;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+}
