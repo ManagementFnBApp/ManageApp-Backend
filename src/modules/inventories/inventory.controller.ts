@@ -70,8 +70,14 @@ export class InventoryController {
     inventoryId?: number,
     @Query('productId', new ParseIntPipe({ optional: true }))
     productId?: number,
+    @Query('shopProductId', new ParseIntPipe({ optional: true }))
+    shopProductId?: number,
   ) {
-    return this.inventoryService.findAllItems(inventoryId, productId);
+    return this.inventoryService.findAllItems(
+      inventoryId,
+      productId,
+      shopProductId,
+    );
   }
 
   @Get('items/:id')
