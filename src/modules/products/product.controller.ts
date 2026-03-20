@@ -46,6 +46,14 @@ export class ProductController {
     return new ResponseData(await this.productService.create(createProductDto, file.path), HttpStatus.CREATED, HttpMessage.SUCCESS);
   }
 
+  @Roles(Role.STAFF, Role.SHOPOWNER)
+  @Get('menu')
+  async getMenu(@GetUser('') user: JwtPayloadDto): Promise<ResponseType<ProductMenuDto[]>> {
+    if (!user)
+      throw new UnauthorizedException('User not found');
+    return new ResponseData<ProductMenuDto[]>(await this.productService.getMenu(user), HttpStatus.OK, HttpMessage.SUCCESS);
+  }
+
   @Public()
   @Get()
   findAll(
@@ -77,13 +85,5 @@ export class ProductController {
   @Delete(':id/hard')
   hardDelete(@Param('id', ParseIntPipe) id: number) {
     return this.productService.hardDelete(id);
-  }
-
-  @Roles(Role.STAFF, Role.SHOPOWNER)
-  @Get('menu')
-  async getMenu(@GetUser('') user: JwtPayloadDto): Promise<ResponseType<ProductMenuDto[]>> {
-    if(!user)
-      throw new UnauthorizedException('User not found');
-    return new ResponseData<ProductMenuDto[]>(await this.productService.getMenu(user), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 }

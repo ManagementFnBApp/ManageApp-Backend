@@ -31,6 +31,14 @@ export class ShopProductController {
     return new ResponseData(await this.shopProductService.create(createShopProductDto, shop_id, file.path), HttpStatus.CREATED, HttpMessage.SUCCESS);
   }
 
+  @Roles(Role.SHOPOWNER, Role.STAFF)
+  @Get('menu')
+  async getMenu(@GetUser() user: JwtPayloadDto) {
+    if (!user)
+      throw new UnauthorizedException('User not found');
+    return new ResponseData(await this.shopProductService.getMenu(user), HttpStatus.OK, HttpMessage.SUCCESS);
+  }
+
   @Roles(Role.ADMIN)
   @Get('all')
   async findAll(): Promise<ResponseType<ShopProductResponseDto[]>> {
@@ -64,7 +72,7 @@ export class ShopProductController {
   }))
   @Patch(':id')
   async update(
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Body() updateShopProductDto: UpdateShopProductDto,
     @GetUser() user: any,
     @UploadedFile() file: Express.Multer.File):
@@ -89,13 +97,5 @@ export class ShopProductController {
   @Delete('admin/:id')
   async removeAdmin(@Param('id') id: string): Promise<ResponseType<{ message: string }>> {
     return new ResponseData(await this.shopProductService.remove(+id, 0, true), HttpStatus.OK, HttpMessage.SUCCESS);
-  }
-
-  @Roles(Role.SHOPOWNER, Role.STAFF)
-  @Get('menu')
-  async getMenu(@GetUser() user: JwtPayloadDto) {
-    if(!user)
-      throw new UnauthorizedException('User not found');
-    return new ResponseData(await this.shopProductService.getMenu(user), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 }
