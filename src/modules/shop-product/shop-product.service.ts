@@ -25,6 +25,22 @@ export class ShopProductService {
       throw new NotFoundException(`Category with id ${createShopProductDto.categoryId} not found`)
     };
 
+    const existingShopProduct = await this.prisma.shopProduct.findFirst({
+      where: {
+        barcode: createShopProductDto.barcode,
+      }
+    });
+
+    const existingProduct = await this.prisma.product.findFirst({
+      where: {
+        barcode: createShopProductDto.barcode,
+      }
+    });
+
+    if(existingProduct || existingShopProduct) {
+      throw new BadRequestException(`Product with barcode ${createShopProductDto.barcode} already exists`);
+    }
+
     try {
       const shopProduct = await this.prisma.shopProduct.create({
         data: {
