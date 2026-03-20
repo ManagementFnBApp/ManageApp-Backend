@@ -31,6 +31,18 @@ export class ProfileService {
     return profiles.map((profile) => this.transformToDto(profile));
   }
 
+  async getProfileDetail(userId: number): Promise<ProfileResponseDto> {
+    const profile = await this.prisma.profile.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException(`Profile for user with ID ${userId} not found`);
+    }
+
+    return this.transformToDto(profile);
+  }
+
   async updateProfile(
     id: string,
     userId: number,
