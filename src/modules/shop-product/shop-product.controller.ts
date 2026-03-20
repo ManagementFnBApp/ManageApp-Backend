@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpStatus, ForbiddenException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpStatus, ForbiddenException, UseInterceptors, UploadedFile, UnauthorizedException } from '@nestjs/common';
 import { ShopProductService } from './shop-product.service';
 import { CreateShopProductDto, ShopProductResponseDto, UpdateShopProductDto } from 'src/dtos/shop-product.dto';
 import { GetUser, Roles } from 'src/decorators/decorators';
@@ -94,6 +94,8 @@ export class ShopProductController {
   @Roles(Role.SHOPOWNER, Role.STAFF)
   @Get('menu')
   async getMenu(@GetUser() user: JwtPayloadDto) {
+    if(!user)
+      throw new UnauthorizedException('User not found');
     return new ResponseData(await this.shopProductService.getMenu(user), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 }
