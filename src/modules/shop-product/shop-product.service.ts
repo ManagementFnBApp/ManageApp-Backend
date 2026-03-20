@@ -124,28 +124,6 @@ export class ShopProductService {
       }
     };
 
-    const shopProduct = await this.prisma.shopProduct.update({
-      where: {
-        id,
-      },
-    });
-
-    if (!existing) {
-      throw new NotFoundException(`Product with id ${id} not found`);
-    }
-
-    // Nếu có cập nhật categoryId thì kiểm tra category tồn tại
-    if (updateShopProductDto.categoryId !== undefined) {
-      const category = await this.prisma.category.findUnique({
-        where: { id: updateShopProductDto.categoryId },
-      });
-      if (!category) {
-        throw new NotFoundException(
-          `Category with id ${updateShopProductDto.categoryId} not found`,
-        );
-      }
-    }
-
     const updated = await this.prisma.shopProduct.update({
       where: { id },
       data: {
