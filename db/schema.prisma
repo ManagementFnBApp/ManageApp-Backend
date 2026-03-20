@@ -1,0 +1,346 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Role {
+  id          Int     @id @default(autoincrement())
+  role_code   String  @unique
+  description String?
+  permissions Json?
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id               Int              @id @default(autoincrement())
+  shop_id          Int?
+  owner_manager_id Int?
+  role_id          Int?
+  email            String           @unique
+  password         String
+  username         String           @unique
+  is_active        Boolean          @default(true)
+  last_login       DateTime?
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
+  inventory_traits InventoryTrait[] @relation("InventoryTraitCreator")
+  profile          Profile?
+  shift_users      ShiftUser[]      @relation("ShiftUsers")
+  owner            User?            @relation("UserOwner", fields: [owner_manager_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  managed_users    User[]           @relation("UserOwner")
+  role             Role?            @relation(fields: [role_id], references: [id])
+  shop             Shop?            @relation(fields: [shop_id], references: [id])
+
+  @@map("users")
+}
+
+model Profile {
+  id         String   @id @default(uuid())
+  user_id    Int      @unique
+  full_name  String
+  avatar     String?
+  phone      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [id])
+
+  @@map("profiles")
+}
+
+model Shop {
+  id                 Int                @id @default(autoincrement())
+  shop_name          String
+  address            String?
+  phone              String?
+  is_active          Boolean            @default(true)
+  created_at         DateTime           @default(now())
+  update_at          DateTime           @updatedAt
+  customers          Customer[]
+  inventories        Inventory[]
+  merchandises       Merchandise[]
+  shift_users        ShiftUser[]
+  shop_categories    ShopCategory[]
+  shop_subscriptions ShopSubscription[]
+  users              User[]
+  shop_products     ShopProduct[]
+
+  @@map("shops")
+}
+
+model Shift {
+  id          Int         @id @default(autoincrement())
+  shift_name  String      @unique
+  shift_users ShiftUser[]
+
+  @@map("shifts")
+}
+
+model ShiftUser {
+  id             Int       @id @default(autoincrement())
+  shift_id       Int
+  user_id        Int
+  shop_id        Int
+  date           DateTime @db.Date
+  notes          String?
+  created_at     DateTime  @default(now())
+  orders         Orders[]
+  shift          Shift     @relation(fields: [shift_id], references: [id])
+  shop           Shop      @relation(fields: [shop_id], references: [id])
+  user           User      @relation("ShiftUsers", fields: [user_id], references: [id])
+
+  @@map("shift_users")
+}
+
+model Customer {
+  id                      Int                     @id @default(autoincrement())
+  shop_id                 Int
+  phone                   String
+  full_name               String?
+  loyalty_point           Int?                    @default(0)
+  created_at              DateTime                @default(now())
+  shop                    Shop                    @relation(fields: [shop_id], references: [id])
+  merchandise_redemptions MerchandiseRedemption[]
+  orders                  Orders[]
+
+  @@map("customers")
+}
+
+model Category {
+  id            Int            @id @default(autoincrement())
+  category_name String
+  is_active     Boolean        @default(true)
+  products      Product[]
+  shop_category ShopCategory[]
+  shop_products     ShopProduct[]
+
+  @@map("categories")
+}
+
+model ShopCategory {
+  shop_id     Int
+  category_id Int
+  category    Category @relation(fields: [category_id], references: [id])
+  shop        Shop     @relation(fields: [shop_id], references: [id])
+
+  @@id([shop_id, category_id])
+  @@map("shop_categories")
+}
+
+model Product {
+  id              Int             @id @default(autoincrement())
+  category_id     Int
+  product_name    String
+  image             String          @unique
+  barcode         String?       @unique 
+  description     String?
+  measure_unit    String?
+  import_price    Decimal         @db.Decimal(10, 2)
+  list_price      Decimal         @db.Decimal(10, 2)
+  is_active       Boolean         @default(true)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  inventory_items InventoryItem[]
+  order_items     OrderItem[]
+  category        Category        @relation(fields: [category_id], references: [id])
+
+  @@map("products")
+}
+
+model ShopProduct {
+  id              Int             @id @default(autoincrement())
+  category_id     Int
+  shop_id         Int
+  product_name    String
+  image           String
+  barcode         String?
+  description     String?
+  measure_unit    String?
+  import_price    Decimal         @db.Decimal(10, 2)
+  list_price      Decimal         @db.Decimal(10, 2)
+  is_active       Boolean         @default(true)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  inventory_items InventoryItem[]
+  order_items     OrderItem[]
+  shop            Shop            @relation(fields: [shop_id], references: [id])
+  category        Category        @relation(fields: [category_id], references: [id])
+
+  @@unique([shop_id, image])
+  @@unique([shop_id, barcode])
+  @@map("shop_products")
+}
+
+model Inventory {
+  id                Int             @id @default(autoincrement())
+  shop_id           Int
+  current_quantity  Int             @default(0)
+  minimum_threshold Int?
+  reorder_quantity  Int?
+  last_restock_at   DateTime?
+  update_at         DateTime        @updatedAt
+  shop              Shop            @relation(fields: [shop_id], references: [id])
+  inventory_items   InventoryItem[]
+
+  @@map("inventories")
+}
+
+model InventoryItem {
+  id                Int              @id @default(autoincrement())
+  product_id        Int?
+  shop_product_id   Int?
+  inventory_id      Int
+  quantity          Int              @default(0)
+  reserved_quantity Int?             @default(0)
+  updated_at        DateTime         @updatedAt
+  inventory         Inventory        @relation(fields: [inventory_id], references: [id])
+  product           Product?         @relation(fields: [product_id], references: [id])
+  shop_product      ShopProduct?     @relation(fields: [shop_product_id], references: [id])
+  inventory_traits  InventoryTrait[]
+
+  @@unique([inventory_id, product_id])
+  @@unique([inventory_id, shop_product_id])
+  @@map("inventory_items")
+}
+
+model InventoryTrait {
+  id                Int           @id @default(autoincrement())
+  inventory_item_id Int
+  created_by        Int
+  inv_trait_type    String
+  direction_sign    String
+  quantity          Int
+  quantity_before   Int
+  quantity_after    Int
+  created_at        DateTime      @default(now())
+  user              User          @relation("InventoryTraitCreator", fields: [created_by], references: [id])
+  inventory_item    InventoryItem @relation(fields: [inventory_item_id], references: [id])
+
+  @@map("inventory_traits")
+}
+
+model Merchandise {
+  id               Int                     @id @default(autoincrement())
+  shop_id          Int
+  merchandise_name String
+  description      String?
+  sku              String?
+  barcode          String?
+  point_required   Int
+  total_quantity   Int
+  is_active        Boolean                 @default(true)
+  created_at       DateTime                @default(now())
+  update_at        DateTime                @updatedAt
+  redemptions      MerchandiseRedemption[]
+  shop             Shop                    @relation(fields: [shop_id], references: [id])
+
+  @@map("merchandises")
+}
+
+model MerchandiseRedemption {
+  id              Int         @id @default(autoincrement())
+  customer_id     Int
+  merchandise_id  Int
+  shop_id         Int
+  point_spent     Int
+  redemption_date DateTime    @default(now())
+  customer        Customer    @relation(fields: [customer_id], references: [id])
+  merchandise     Merchandise @relation(fields: [merchandise_id], references: [id])
+
+  @@map("merchandise_redemptions")
+}
+
+model Orders {
+  id            Int         @id @default(autoincrement())
+  shift_user_id Int
+  customer_id   Int?
+  total_amount  Decimal     @db.Decimal(10, 2)
+  order_status  String
+  notes         String?
+  created_at    DateTime    @default(now())
+  completed_at  DateTime?
+  cancelled_at  DateTime?
+  order_items   OrderItem[]
+  customer      Customer?   @relation(fields: [customer_id], references: [id])
+  shift_user    ShiftUser   @relation(fields: [shift_user_id], references: [id])
+  payments      Payment[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id              Int          @id @default(autoincrement())
+  product_id      Int?
+  shop_product_id Int?
+  order_id        Int
+  quantity        Int
+  unit_price      Decimal      @db.Decimal(10, 2)
+  order           Orders       @relation(fields: [order_id], references: [id])
+  product         Product?     @relation(fields: [product_id], references: [id])
+  shop_product    ShopProduct? @relation(fields: [shop_product_id], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id             Int      @id @default(autoincrement())
+  order_id       Int
+  amount_paid    Decimal  @db.Decimal(10, 2)
+  currency       String   @default("VND")
+  payment_method String
+  payment_status String
+  created_at     DateTime @default(now())
+  update_at      DateTime @updatedAt
+  order          Orders   @relation(fields: [order_id], references: [id])
+
+  @@map("payments")
+}
+
+model Subscription {
+  id                 Int                @id @default(autoincrement())
+  package_code       String             @unique
+  description        String?
+  price              Decimal            @db.Decimal(10, 2)
+  billing_cycle      String
+  features           Json?
+  is_active          Boolean            @default(true)
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @default(now()) @updatedAt
+  deleted_at         DateTime?
+  shop_subscriptions ShopSubscription[]
+
+  @@map("subscriptions")
+}
+
+model ShopSubscription {
+  id                    Int                   @id @default(autoincrement())
+  subscription_id       Int
+  shop_id               Int
+  number_of_renewals    Int?                  @default(0)
+  start_date            DateTime              @default(now())
+  end_date              DateTime?
+  created_at            DateTime              @default(now())
+  updated_at            DateTime              @updatedAt
+  is_expired            Boolean               @default(false)
+  shop                  Shop                  @relation(fields: [shop_id], references: [id])
+  subscription          Subscription          @relation(fields: [subscription_id], references: [id])
+  subscription_payments SubscriptionPayment[]
+
+  @@map("shop_subscriptions")
+}
+
+model SubscriptionPayment {
+  id                Int              @id @default(autoincrement())
+  method            String
+  amount            Decimal          @db.Decimal(10, 2)
+  created_at        DateTime         @default(now())
+  payment_status    String
+  sub_shop_id       Int
+  shop_subscription ShopSubscription @relation(fields: [sub_shop_id], references: [id])
+
+  @@map("subscription_payments")
+}

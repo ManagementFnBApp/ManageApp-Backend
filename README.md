@@ -45,12 +45,19 @@ $ npm run start:prod
 ```
 
 ## Migration
+
 ```bash
 # run migration
 $ npx prisma migrate dev --name init
 
 # reset
 $ npx prisma migrate reset
+
+# status
+$ npx prisma migrate status
+
+#generate (sync with db)
+$ npx prisma generate
 ```
 Change "init" to the name of the changes
 
