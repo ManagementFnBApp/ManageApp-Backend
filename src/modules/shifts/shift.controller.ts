@@ -93,7 +93,7 @@ export class ShiftController {
    * SHOPOWNER xem toàn bộ lịch shift của shop (chỉ active)
    */
   @Get('users')
-  @Roles(Role.SHOPOWNER)
+  @Roles(Role.SHOPOWNER, Role.STAFF)
   async getShopShiftUsers(@GetUser('shop_id') shop_id: number) {
     try {
       const data = await this.shiftService.getShopShiftUsers(shop_id);
@@ -108,7 +108,7 @@ export class ShiftController {
    * Xem lịch shift của 1 nhân viên cụ thể
    */
   @Get('users/staff/:userId')
-  @Roles(Role.SHOPOWNER)
+  @Roles(Role.SHOPOWNER, Role.STAFF)
   async getStaffShiftUsers(
     @Param('userId') userId: number,
     @GetUser('shop_id') shop_id: number,

@@ -21,7 +21,7 @@ export class UserService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   async getAllUsers(): Promise<UserResponseDto[]> {
     const users = await this.prisma.user.findMany({
@@ -66,7 +66,16 @@ export class UserService {
         email: body.email,
         username: body.username,
         password: hashPassword,
-      }
+        profile: {
+          create: {
+            full_name: '',
+          },
+        },
+      },
+      include: {
+        role: true,
+        profile: true,
+      },
     });
     return this.transformToDto(user);
   }
@@ -269,6 +278,11 @@ export class UserService {
         shop_id: shopOwner.shop_id, // Gán shop_id của SHOPOWNER
         owner_manager_id: shopOwnerId, // Gán owner_manager_id là id của SHOPOWNER
         is_active: true,
+        profile: {
+          create: {
+            full_name: '',
+          },
+        },
       },
       include: {
         role: true,
@@ -388,13 +402,13 @@ export class UserService {
       updated_at: user.updated_at,
       profile: user.profile
         ? {
-            profile_id: user.profile.profile_id,
-            full_name: user.profile.full_name,
-            avatar: user.profile.avatar,
-            phone: user.profile.phone,
-            created_at: user.profile.created_at,
-            updated_at: user.profile.updated_at,
-          }
+          profile_id: user.profile.id,
+          full_name: user.profile.full_name,
+          avatar: user.profile.avatar,
+          phone: user.profile.phone,
+          created_at: user.profile.created_at,
+          updated_at: user.profile.updated_at,
+        }
         : null,
     };
   }
