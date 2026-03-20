@@ -59,8 +59,12 @@ export class InventoryResponseDto {
 
 export class CreateInventoryItemDto {
   @IsInt()
-  @IsNotEmpty()
-  productId: number;
+  @IsOptional()
+  productId?: number;
+
+  @IsInt()
+  @IsOptional()
+  shopProductId?: number;
 
   @IsInt()
   @IsNotEmpty()
@@ -82,6 +86,10 @@ export class UpdateInventoryItemDto {
 
   @IsInt()
   @IsOptional()
+  shopProductId?: number;
+
+  @IsInt()
+  @IsOptional()
   inventoryId?: number;
 
   @IsInt()
@@ -95,7 +103,9 @@ export class UpdateInventoryItemDto {
 
 export class InventoryItemResponseDto {
   inventoryItemId: number;
-  productId: number;
+  productId?: number | null;
+  shopProductId?: number | null;
+  productType?: 'SYSTEM' | 'SHOP';
   inventoryId: number;
   quantity: number;
   reservedQuantity?: number | null;

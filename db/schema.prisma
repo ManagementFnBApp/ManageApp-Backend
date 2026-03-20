@@ -202,6 +202,8 @@ model InventoryItem {
   shop_product      ShopProduct?     @relation(fields: [shop_product_id], references: [id])
   inventory_traits  InventoryTrait[]
 
+  @@unique([inventory_id, product_id])
+  @@unique([inventory_id, shop_product_id])
   @@map("inventory_items")
 }
 

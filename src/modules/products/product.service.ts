@@ -43,7 +43,13 @@ export class ProductService {
       },
     });
 
-    if (existingProduct) {
+    const existingShopProduct = await this.prisma.shopProduct.findFirst({
+      where: {
+        barcode: createProductDto.barcode,
+      }
+    });
+
+    if (existingProduct || existingShopProduct) {
       throw new ConflictException('Product with this barcode already exists');
     }
 

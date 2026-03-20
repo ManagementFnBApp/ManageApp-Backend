@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   Injectable,
   NotFoundException,
@@ -153,6 +153,24 @@ export class ShiftService {
   }
 
   private transformToUserDto(record: any): ShiftUserResponseDto {
+    const dateValue =
+      record.date instanceof Date
+        ? record.date
+        : record.date
+          ? new Date(record.date)
+          : null;
+
+    const formattedDate = (() => {
+      if (!dateValue) return '';
+      // Format theo giờ Việt Nam để tránh lệch 1 ngày do UTC/server timezone
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(dateValue);
+    })();
+
     return {
       id: record.id,
       shift_id: record.shift_id,
@@ -161,6 +179,7 @@ export class ShiftService {
       username: record.user?.username ?? '',
       shop_id: record.shop_id,
       notes: record.notes ?? null,
+      date: formattedDate,
       created_at: record.created_at?.toISOString(),
     };
   }

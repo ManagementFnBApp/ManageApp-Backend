@@ -51,5 +51,7 @@ export class ShiftUserResponseDto {
   username: string;
   shop_id: number;
   notes: string | null;
+  // Ngày làm việc của assignment (định dạng YYYY-MM-DD)
+  date: string;
   created_at: string;
 }
