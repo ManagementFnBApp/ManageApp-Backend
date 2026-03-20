@@ -25,6 +25,17 @@ export class ProfileController {
     );
   }
 
+  @Get('detail')
+  async getProfileDetail(
+    @GetUser('id') userId: number,
+  ): Promise<ResponseType<ProfileResponseDto>> {
+    return new ResponseData(
+      await this.profileService.getProfileDetail(userId),
+      HttpStatus.SUCCESS,
+      HttpMessage.SUCCESS,
+    );
+  }
+
   @Roles(Role.ADMIN)
   @Get()
   async getAllProfiles(): Promise<ResponseType<ProfileResponseDto[]>> {
