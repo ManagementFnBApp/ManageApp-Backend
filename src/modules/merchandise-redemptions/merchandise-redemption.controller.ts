@@ -9,7 +9,7 @@ import { HttpMessage, HttpStatus } from 'src/global/globalEnum';
 @Controller('merchandise-redemptions')
 @UseGuards(AuthGuard)
 export class MerchandiseRedemptionController {
-  constructor(private redemptionService: MerchandiseRedemptionService) {}
+  constructor(private redemptionService: MerchandiseRedemptionService) { }
 
   /**
    * POST /merchandise-redemptions

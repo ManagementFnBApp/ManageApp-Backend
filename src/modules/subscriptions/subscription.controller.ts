@@ -47,7 +47,7 @@ export class SubscriptionController {
     private readonly subscriptionService: SubscriptionService,
     private readonly shopSubscriptionService: ShopSubscriptionService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   // ==================== SUBSCRIPTION ENDPOINTS ====================
   // Chỉ ADMIN mới được tạo/sửa/xóa subscription packages

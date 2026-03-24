@@ -23,7 +23,7 @@ import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
 @Controller('shifts')
 @UseGuards(AuthGuard)
 export class ShiftController {
-  constructor(private shiftService: ShiftService) {}
+  constructor(private shiftService: ShiftService) { }
 
   // ──────────────────────────────────────────
   // Shift Templates

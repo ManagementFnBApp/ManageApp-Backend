@@ -3,14 +3,19 @@ import { OrderDto, OrderMonthReportDto, OrderReportDto, OrderResponseDto, ViewOr
 import { OrderStatus } from 'src/global/globalEnum';
 import { PrismaService } from 'db/prisma.service';
 import { JwtPayloadDto } from 'src/dtos/login.dto';
+import { InventoryService } from '../inventories/inventory.service';
 const POINTS_PER_VND = 10_000;
 @Injectable()
 export class OrderService {
   constructor(
-    private prisma: PrismaService
+    private prisma: PrismaService,
+    private readonly inventoryService: InventoryService,
   ) { }
 
-  async createOrder(data: OrderDto, _user_id: number): Promise<any> {
+  async createOrder(data: OrderDto, user: JwtPayloadDto): Promise<any> {
+    if (user.shop_id == null || user.shop_id == undefined) {
+      throw new BadRequestException('User does not belong to any shop');
+    }
     const { order_items, ...orderInfo } = data;
 
     // 1. Validate that each item has exactly one of product_id or shop_product_id
@@ -46,6 +51,19 @@ export class OrderService {
 
       if (existingProducts.length !== productIds.length || existingShopProducts.length !== shopProductIds.length) {
         throw new BadRequestException('One or more products do not exist');
+      }
+
+      for (const item of order_items) {
+        try {
+          await this.inventoryService.decreaseItem({
+            product_id: item.product_id,
+            shop_product_id: item.shop_product_id,
+            quantity: item.quantity,
+            shop_id: user.shop_id!
+          })
+        } catch (error) {
+          throw new BadRequestException('Error processing order: ' + error.message);
+        }
       }
 
       return prismaTx.orders.create({

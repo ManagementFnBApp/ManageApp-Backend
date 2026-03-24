@@ -111,3 +111,10 @@ export class InventoryItemResponseDto {
   reservedQuantity?: number | null;
   updatedAt: Date;
 }
+
+export class DecreaseItemDto {
+  product_id: number | null | undefined;
+  shop_product_id: number | null | undefined;
+  quantity: number;
+  shop_id: number;
+}
