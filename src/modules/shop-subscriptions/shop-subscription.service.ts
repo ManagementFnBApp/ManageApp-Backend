@@ -9,13 +9,11 @@ import {
   SubscriptionPaymentResponseDto,
   CreateSubscriptionShopDto,
   SubscriptionShopResponseDto,
-  MomoPaymentResponseDto,
   PayosPaymentResponseDto,
 } from '../../dtos/subscription.dto';
 import { RoleService } from '../roles/role.service';
 import { EmailService } from '../email/email.service';
 import { PrismaService } from 'db/prisma.service';
-import { MomoService } from '../momo/momo.service';
 import { PayosService } from '../payos/payos.service';
 
 @Injectable()
@@ -26,7 +24,6 @@ export class ShopSubscriptionService {
     private prisma: PrismaService,
     private roleService: RoleService,
     private emailService: EmailService,
-    private momoService: MomoService,
     private payosService: PayosService,
   ) {}
 
@@ -572,212 +569,6 @@ export class ShopSubscriptionService {
     await this.processSuccessfulPayment(paymentId);
 
     return this.transformPaymentToDto(updatedPayment, null);
-  }
-
-  // ==================== MOMO PAYMENT METHODS ====================
-
-  async createMomoSubscriptionPayment(
-    subShopId: number,
-  ): Promise<MomoPaymentResponseDto> {
-    // Kiểm tra shop subscription tồn tại
-    const shopSubscription = await this.prisma.shopSubscription.findUnique({
-      where: { id: subShopId },
-      include: { shop: true, subscription: true },
-    });
-
-    if (!shopSubscription) {
-      throw new BadRequestException(
-        `Shop subscription ID ${subShopId} không tồn tại`,
-      );
-    }
-
-    // Không cho tạo mới nếu đã có payment thành công
-    const existingSuccess = await this.prisma.subscriptionPayment.findFirst({
-      where: { sub_shop_id: subShopId, payment_status: 'success' },
-    });
-    if (existingSuccess) {
-      throw new BadRequestException(
-        'Shop subscription này đã được kích hoạt.',
-      );
-    }
-
-    const amount = parseFloat(shopSubscription.subscription.price.toString());
-
-    // Tạo pending payment record
-    const payment = await this.prisma.subscriptionPayment.create({
-      data: {
-        sub_shop_id: subShopId,
-        method: 'MOMO',
-        amount: amount,
-        payment_status: 'pending',
-      },
-    });
-
-    // orderId encode paymentId để IPN có thể tìm lại
-    const orderId = `MONOSUB_${payment.id}`;
-    const orderInfo = `Thanh toan goi ${shopSubscription.subscription.package_code} cho shop ${shopSubscription.shop.shop_name}`;
-
-    let momoResponse;
-    try {
-      momoResponse = await this.momoService.createPayment(
-        orderId,
-        amount,
-        orderInfo,
-      );
-    } catch (error) {
-      // Rollback pending payment nếu gọi MoMo thất bại
-      await this.prisma.subscriptionPayment.delete({ where: { id: payment.id } });
-      throw new BadRequestException(
-        `Không thể kết nối đến MoMo: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    if (momoResponse.resultCode !== 0) {
-      await this.prisma.subscriptionPayment.delete({ where: { id: payment.id } });
-      throw new BadRequestException(
-        `Lỗi tạo thanh toán MoMo (code ${momoResponse.resultCode}): ${momoResponse.message}`,
-      );
-    }
-
-    return {
-      paymentId: payment.id,
-      amount: amount,
-      payUrl: momoResponse.payUrl,
-      qrCodeUrl: momoResponse.qrCodeUrl,
-      deeplink: momoResponse.deeplink,
-    };
-  }
-
-  async handleMomoIPN(ipnData: Record<string, any>): Promise<{ message: string }> {
-    // Xác thực chữ ký từ MoMo
-    if (!this.momoService.verifyIPN(ipnData)) {
-      this.logger.warn(`MoMo IPN: chữ ký không hợp lệ - orderId=${ipnData.orderId}`);
-      throw new BadRequestException('Chữ ký IPN không hợp lệ');
-    }
-
-    const { orderId, resultCode } = ipnData;
-
-    if (resultCode !== 0) {
-      // Thanh toán thất bại - đánh dấu payment là failed
-      const paymentIdStr = String(orderId).replace('MONOSUB_', '');
-      const paymentId = parseInt(paymentIdStr, 10);
-      if (!isNaN(paymentId)) {
-        await this.prisma.subscriptionPayment
-          .update({
-            where: { id: paymentId },
-            data: { payment_status: 'failed' },
-          })
-          .catch(() => {
-            // Bỏ qua nếu payment không tìm thấy
-          });
-      }
-      return { message: 'Payment failed' };
-    }
-
-    // Parse paymentId từ orderId
-    const paymentIdStr = String(orderId).replace('MONOSUB_', '');
-    const paymentId = parseInt(paymentIdStr, 10);
-
-    if (isNaN(paymentId)) {
-      throw new BadRequestException(`Định dạng orderId không hợp lệ: ${orderId}`);
-    }
-
-    // Kiểm tra payment chưa xử lý (tránh xử lý lại)
-    const payment = await this.prisma.subscriptionPayment.findUnique({
-      where: { id: paymentId },
-    });
-    if (!payment) {
-      throw new BadRequestException(`Payment ID ${paymentId} không tồn tại`);
-    }
-    if (payment.payment_status === 'success') {
-      return { message: 'Payment đã được xử lý trước đó' };
-    }
-
-    // Cập nhật payment thành công và kích hoạt shop
-    await this.updateSubscriptionPaymentStatus(paymentId);
-
-    this.logger.log(`MoMo IPN: xử lý thành công paymentId=${paymentId}`);
-    return { message: 'IPN processed successfully' };
-  }
-
-  async renewMomoSubscription(userId: number): Promise<MomoPaymentResponseDto> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: { role: true },
-    });
-
-    if (!user || !user.shop_id) {
-      throw new BadRequestException('User chưa có shop. Không thể gia hạn.');
-    }
-    if (user.role?.role_code !== 'SHOPOWNER') {
-      throw new BadRequestException(
-        'Chỉ SHOPOWNER mới có quyền gia hạn subscription.',
-      );
-    }
-
-    const shopSubscription = await this.prisma.shopSubscription.findFirst({
-      where: { shop_id: user.shop_id },
-      orderBy: { created_at: 'desc' },
-      include: { subscription: true, shop: true },
-    });
-
-    if (!shopSubscription) {
-      throw new NotFoundException(
-        `Không tìm thấy subscription cho shop ID ${user.shop_id}`,
-      );
-    }
-
-    const existingPending = await this.prisma.subscriptionPayment.findFirst({
-      where: { sub_shop_id: shopSubscription.id, payment_status: 'pending' },
-    });
-    if (existingPending) {
-      throw new BadRequestException(
-        `Đã có payment đang chờ xử lý (Payment ID: ${existingPending.id}). Hoàn tất payment này trước.`,
-      );
-    }
-
-    const amount = parseFloat(shopSubscription.subscription.price.toString());
-
-    const payment = await this.prisma.subscriptionPayment.create({
-      data: {
-        sub_shop_id: shopSubscription.id,
-        method: 'MOMO',
-        amount: amount,
-        payment_status: 'pending',
-      },
-    });
-
-    const orderId = `MONOSUB_${payment.id}`;
-    const orderInfo = `Gia han goi ${shopSubscription.subscription.package_code} cho shop ${shopSubscription.shop.shop_name}`;
-
-    let momoResponse;
-    try {
-      momoResponse = await this.momoService.createPayment(
-        orderId,
-        amount,
-        orderInfo,
-      );
-    } catch (error) {
-      await this.prisma.subscriptionPayment.delete({ where: { id: payment.id } });
-      throw new BadRequestException(
-        `Không thể kết nối đến MoMo: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    if (momoResponse.resultCode !== 0) {
-      await this.prisma.subscriptionPayment.delete({ where: { id: payment.id } });
-      throw new BadRequestException(
-        `Lỗi tạo thanh toán MoMo (code ${momoResponse.resultCode}): ${momoResponse.message}`,
-      );
-    }
-
-    return {
-      paymentId: payment.id,
-      amount: amount,
-      payUrl: momoResponse.payUrl,
-      qrCodeUrl: momoResponse.qrCodeUrl,
-      deeplink: momoResponse.deeplink,
-    };
   }
 
   async renewSubscription(
