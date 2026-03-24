@@ -12,7 +12,7 @@ import { JwtPayloadDto } from 'src/dtos/login.dto';
 @Controller('orders')
 @UseGuards(AuthGuard)
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(private readonly orderService: OrderService) { }
 
   @Roles(Role.STAFF, Role.SHOPOWNER)
   @Post()

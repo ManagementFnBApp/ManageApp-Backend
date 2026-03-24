@@ -23,7 +23,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private readonly emailService: EmailService,
-  ) {}
+  ) { }
 
   private readonly temporaryUsers: Map<string, string> = new Map();
   private readonly codeExpiration: Map<string, Date> = new Map();

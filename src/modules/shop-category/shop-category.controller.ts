@@ -12,7 +12,7 @@ import { GetUser, Roles } from 'src/decorators/decorators';
 @Controller('shop-categories')
 @UseGuards(AuthGuard)
 export class ShopCategoryController {
-  constructor(private readonly shopCategoryService: ShopCategoryService) {}
+  constructor(private readonly shopCategoryService: ShopCategoryService) { }
 
   @Roles(Role.SHOPOWNER)
   @Post()

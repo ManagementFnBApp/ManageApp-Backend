@@ -21,7 +21,7 @@ import { HttpMessage, HttpStatus } from 'src/global/globalEnum';
 @Controller('merchandises')
 @UseGuards(AuthGuard)
 export class MerchandiseController {
-  constructor(private merchandiseService: MerchandiseService) {}
+  constructor(private merchandiseService: MerchandiseService) { }
 
   @Post()
   async createMerchandise(

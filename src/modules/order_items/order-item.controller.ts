@@ -5,7 +5,7 @@ import { Role } from 'src/global/globalEnum';
 
 @Controller('order-items')
 export class OrderItemController {
-  constructor(private readonly orderItemService: OrderItemService) {}
+  constructor(private readonly orderItemService: OrderItemService) { }
 
   @Roles(Role.SHOPOWNER, Role.STAFF)
   @Post()
