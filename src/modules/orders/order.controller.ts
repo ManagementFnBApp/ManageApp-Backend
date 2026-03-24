@@ -18,7 +18,7 @@ export class OrderController {
   @Post()
   async createOrder(
     @Body() createOrderDto: OrderDto,
-    @GetUser('') user: JwtPayloadDto,
+    @GetUser() user: JwtPayloadDto,
   ): Promise<ResponseType<any>> {
     return new ResponseData(
       await this.orderService.createOrder(createOrderDto, user),
