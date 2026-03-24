@@ -386,7 +386,7 @@ export class InventoryService {
     return { message: `Inventory item with ID ${id} has been deleted` };
   }
 
-  async decreaseItem(dto: DecreaseItemDto): Promise<void> {
+  async decreaseItem(dto: DecreaseItemDto, externalTx?: any): Promise<void> {
     const hasProduct = dto.product_id != null;
     const hasShopProduct = dto.shop_product_id != null;
 
@@ -400,7 +400,7 @@ export class InventoryService {
       throw new BadRequestException('Quantity must be greater than zero');
     }
 
-    await this.prisma.$transaction(async (prismaTx) => {
+    const executeDecrease = async (prismaTx) => {
       const inventories = await prismaTx.inventory.findMany({
         where: { shop_id: dto.shop_id },
         orderBy: { update_at: 'asc' },
@@ -426,12 +426,23 @@ export class InventoryService {
         }
 
         const deduct = Math.min(inventoryItem.quantity, remaining);
-        remaining -= deduct;
 
-        await prismaTx.inventoryItem.update({
-          where: { id: inventoryItem.id },
-          data: { quantity: inventoryItem.quantity - deduct },
+        const updateResult = await prismaTx.inventoryItem.updateMany({
+          where: {
+            id: inventoryItem.id,
+            quantity: { gte: deduct }, // Đảm bảo số tồn thực tế vẫn đủ để trừ số 'deduct' này
+          },
+          data: { quantity: { decrement: deduct } },
         });
+
+        // Nếu count === 0, có một giao dịch khác đã trừ mất hàng trong tích tắc vừa rồi
+        if (updateResult.count === 0) {
+          throw new ConflictException(
+            'Xung đột dữ liệu tồn kho do có nhiều giao dịch cùng lúc. Vui lòng thử lại.',
+          );
+        }
+
+        remaining -= deduct;
       }
 
       if (remaining > 0) {
@@ -439,7 +450,14 @@ export class InventoryService {
           'Insufficient inventory quantity to fulfill the decrease',
         );
       }
-    });
+    };
+    if (externalTx) {
+      // Nếu có transaction từ bên ngoài truyền vào (từ hàm tạo Order), dùng chung nó
+      await executeDecrease(externalTx);
+    } else {
+      // Nếu không có, tự khởi tạo transaction mới
+      await this.prisma.$transaction(executeDecrease);
+    }
   }
 
   // ========================================
