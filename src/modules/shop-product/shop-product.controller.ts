@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpStatus, ForbiddenException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpStatus, ForbiddenException, UseInterceptors, UploadedFile, UnauthorizedException } from '@nestjs/common';
 import { ShopProductService } from './shop-product.service';
 import { CreateShopProductDto, ShopProductResponseDto, UpdateShopProductDto } from 'src/dtos/shop-product.dto';
 import { GetUser, Roles } from 'src/decorators/decorators';
@@ -7,6 +7,7 @@ import { ResponseData, ResponseType } from 'src/global/globalResponse';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 
 @Controller('shop-products')
 export class ShopProductController {
@@ -28,6 +29,14 @@ export class ShopProductController {
       throw new ForbiddenException('You are not associated with any shop. Please contact your administrator.');
     }
     return new ResponseData(await this.shopProductService.create(createShopProductDto, shop_id, file.path), HttpStatus.CREATED, HttpMessage.SUCCESS);
+  }
+
+  @Roles(Role.SHOPOWNER, Role.STAFF)
+  @Get('menu')
+  async getMenu(@GetUser() user: JwtPayloadDto) {
+    if (!user)
+      throw new UnauthorizedException('User not found');
+    return new ResponseData(await this.shopProductService.getMenu(user), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 
   @Roles(Role.ADMIN)
@@ -63,7 +72,7 @@ export class ShopProductController {
   }))
   @Patch(':id')
   async update(
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Body() updateShopProductDto: UpdateShopProductDto,
     @GetUser() user: any,
     @UploadedFile() file: Express.Multer.File):

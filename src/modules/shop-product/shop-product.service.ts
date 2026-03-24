@@ -4,6 +4,7 @@ import { PrismaService } from 'db/prisma.service';
 import { join } from 'path';
 import { CreateShopProductDto, ShopProductResponseDto, UpdateShopProductDto } from 'src/dtos/shop-product.dto';
 import * as fs from 'fs/promises';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 
 @Injectable()
 export class ShopProductService {
@@ -37,7 +38,7 @@ export class ShopProductService {
       }
     });
 
-    if(existingProduct || existingShopProduct) {
+    if (existingProduct || existingShopProduct) {
       throw new BadRequestException(`Product with barcode ${createShopProductDto.barcode} already exists`);
     }
 
@@ -170,6 +171,41 @@ export class ShopProductService {
     });
 
     return { message: 'Product removed successfully' };
+  }
+
+  async getMenu(user: JwtPayloadDto) {
+    if (user.shop_id == null) {
+      throw new BadRequestException('User does not belong to any shop');
+    }
+
+    const shopId = Number(user.shop_id);
+    
+    const shopProducts = await this.prisma.shopProduct.findMany({
+      include: {
+        inventory_items: {
+          where: {
+            inventory: {
+              shop_id: shopId,
+            },
+          },
+          select: {
+            quantity: true,
+          },
+        },
+      },
+    });
+
+    return shopProducts.map((shopProduct) => {
+      const totalQuantity = shopProduct.inventory_items.reduce(
+        (sum, item) => sum + item.quantity,
+        0,
+      );
+
+      return {
+        ...this.transformToResponseDto(shopProduct),
+        quantity: totalQuantity
+      };
+    });
   }
 
   transformToResponseDto(shopProduct: any) {

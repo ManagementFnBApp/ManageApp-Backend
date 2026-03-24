@@ -8,12 +8,14 @@ import {
   CreateProductDto,
   UpdateProductDto,
   ProductResponseDto,
+  ProductMenuDto,
 } from '../../dtos/product.dto';
 import { PrismaService } from 'db/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
 import * as fs from 'fs/promises';
 import { plainToInstance } from 'class-transformer';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 
 @Injectable()
 export class ProductService {
@@ -211,6 +213,44 @@ export class ProductService {
     }
     return products;
   }
+
+  async getMenu(user: JwtPayloadDto): Promise<ProductMenuDto[]> {
+    if (user.shop_id == null) {
+      throw new BadRequestException('User does not belong to any shop');
+    }
+
+    const shopId = Number(user.shop_id);
+
+    const products = await this.prisma.product.findMany({
+      include: {
+        inventory_items: {
+          where: {
+            inventory: {
+              shop_id: shopId,
+            },
+          },
+          select: {
+            quantity: true,
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    return products.map((product) => {
+      const totalQuantity = product.inventory_items.reduce(
+        (sum, item) => sum + item.quantity,
+        0,
+      );
+
+      return {
+        ...this.mapToResponseDto(product),
+        quantity: totalQuantity
+      };
+    });
+  }
+
+
 
   private mapToResponseDto(product: any): ProductResponseDto {
     return {

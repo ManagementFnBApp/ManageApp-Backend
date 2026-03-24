@@ -13,16 +13,18 @@ import {
   UploadedFile,
   Put,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
-import { CreateProductDto, ProductResponseDto, UpdateProductDto } from '../../dtos/product.dto';
+import { CreateProductDto, ProductMenuDto, ProductResponseDto, UpdateProductDto } from '../../dtos/product.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
-import { Public, Roles } from 'src/decorators/decorators';
+import { GetUser, Public, Roles } from 'src/decorators/decorators';
 import { HttpMessage, Role } from 'src/global/globalEnum';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 
 @Controller('products')
 @UseGuards(AuthGuard)
@@ -42,6 +44,14 @@ export class ProductController {
   @Post()
   async create(@Body() createProductDto: CreateProductDto, @UploadedFile() file: Express.Multer.File): Promise<ResponseType<ProductResponseDto>> {
     return new ResponseData(await this.productService.create(createProductDto, file.path), HttpStatus.CREATED, HttpMessage.SUCCESS);
+  }
+
+  @Roles(Role.STAFF, Role.SHOPOWNER)
+  @Get('menu')
+  async getMenu(@GetUser('') user: JwtPayloadDto): Promise<ResponseType<ProductMenuDto[]>> {
+    if (!user)
+      throw new UnauthorizedException('User not found');
+    return new ResponseData<ProductMenuDto[]>(await this.productService.getMenu(user), HttpStatus.OK, HttpMessage.SUCCESS);
   }
 
   @Public()
