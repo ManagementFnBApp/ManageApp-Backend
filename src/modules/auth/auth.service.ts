@@ -33,7 +33,7 @@ export class AuthService {
   }
 
   async login({ username, password }: LoginDto): Promise<AuthPermission> {
-    const user = await this.userService.getUserByUsername(username);
+    const user = await this.userService.getUserByUsernameOrEmail(username);
     if (!user) {
       throw new UnauthorizedException('Username or password is incorrect');
     }
