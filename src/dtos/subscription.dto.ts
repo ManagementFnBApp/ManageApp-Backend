@@ -226,3 +226,42 @@ export class MomoPaymentResponseDto {
   })
   deeplink?: string;
 }
+
+// ==================== PAYOS PAYMENT DTOs ====================
+
+export class CreatePayosSubscriptionPaymentDto {
+  @ApiProperty({
+    example: 1,
+    description: 'ID của shop subscription (lấy từ bước tạo shop)',
+  })
+  @IsInt()
+  @IsNotEmpty()
+  sub_shop_id: number;
+}
+
+export class PayosPaymentResponseDto {
+  @ApiProperty({ example: 1 })
+  paymentId: number;
+
+  @ApiProperty({ example: 299000 })
+  amount: number;
+
+  @ApiProperty({
+    example: 'https://web.payos.vn/web/...',
+    description: 'URL trang thanh toán PayOS với QR code - redirect user đến đây',
+  })
+  checkoutUrl: string;
+
+  @ApiProperty({
+    example: 'https://qr.payos.vn/...',
+    description: 'URL mã QR code dạng ảnh',
+    required: false,
+  })
+  qrCode?: string;
+
+  @ApiProperty({
+    example: 123456789,
+    description: 'Order code để theo dõi thanh toán',
+  })
+  orderCode: number;
+}

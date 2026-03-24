@@ -10,11 +10,13 @@ import {
   CreateSubscriptionShopDto,
   SubscriptionShopResponseDto,
   MomoPaymentResponseDto,
+  PayosPaymentResponseDto,
 } from '../../dtos/subscription.dto';
 import { RoleService } from '../roles/role.service';
 import { EmailService } from '../email/email.service';
 import { PrismaService } from 'db/prisma.service';
 import { MomoService } from '../momo/momo.service';
+import { PayosService } from '../payos/payos.service';
 
 @Injectable()
 export class ShopSubscriptionService {
@@ -25,6 +27,7 @@ export class ShopSubscriptionService {
     private roleService: RoleService,
     private emailService: EmailService,
     private momoService: MomoService,
+    private payosService: PayosService,
   ) {}
 
   // ==================== SHOP SUBSCRIPTION METHODS ====================
@@ -1014,6 +1017,239 @@ export class ShopSubscriptionService {
             billing_cycle: shopSub.subscription.billing_cycle,
           }
         : undefined,
+    };
+  }
+
+  // ==================== PAYOS PAYMENT METHODS ====================
+
+  async createPayosSubscriptionPayment(
+    subShopId: number,
+    userId: number,
+  ): Promise<PayosPaymentResponseDto> {
+    // Kiểm tra shop subscription tồn tại
+    const shopSubscription = await this.prisma.shopSubscription.findUnique({
+      where: { id: subShopId },
+      include: { shop: true, subscription: true },
+    });
+
+    if (!shopSubscription) {
+      throw new BadRequestException(
+        `Shop subscription ID ${subShopId} không tồn tại`,
+      );
+    }
+
+    // Không cho tạo mới nếu đã có payment thành công
+    const existingSuccess = await this.prisma.subscriptionPayment.findFirst({
+      where: { sub_shop_id: subShopId, payment_status: 'success' },
+    });
+    if (existingSuccess) {
+      throw new BadRequestException(
+        'Shop subscription này đã được kích hoạt.',
+      );
+    }
+
+    const amount = Math.floor(
+      parseFloat(shopSubscription.subscription.price.toString()),
+    );
+
+    // Tạo pending payment record
+    const payment = await this.prisma.subscriptionPayment.create({
+      data: {
+        sub_shop_id: subShopId,
+        method: 'PAYOS',
+        amount: amount,
+        payment_status: 'pending',
+      },
+    });
+
+    // orderCode là unique identifier cho PayOS
+    // Sử dụng timestamp + paymentId để tạo unique orderCode
+    const orderCode = parseInt(`${Date.now()}${payment.id}`.slice(-10));
+    const description = `Thanh toan goi ${shopSubscription.subscription.package_code} cho shop ${shopSubscription.shop.shop_name}`;
+
+    // Lấy thông tin user để truyền vào PayOS
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
+
+    let payosResponse;
+    try {
+      payosResponse = await this.payosService.createPayment(
+        orderCode,
+        amount,
+        description,
+        user?.profile?.full_name ?? undefined,
+        user?.profile?.phone ?? undefined,
+        user?.email ?? undefined,
+      );
+    } catch (error) {
+      // Rollback pending payment nếu gọi PayOS thất bại
+      await this.prisma.subscriptionPayment.delete({ where: { id: payment.id } });
+      throw new BadRequestException(
+        `Không thể kết nối đến PayOS: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    if (payosResponse.code !== '00') {
+      await this.prisma.subscriptionPayment.delete({ where: { id: payment.id } });
+      throw new BadRequestException(
+        `Lỗi tạo thanh toán PayOS (code ${payosResponse.code}): ${payosResponse.desc}`,
+      );
+    }
+
+    // Lưu orderCode vào payment để có thể match lại khi webhook
+    // Tạm thời lưu vào một field hoặc tạo mapping table nếu cần
+
+    return {
+      paymentId: payment.id,
+      amount: amount,
+      checkoutUrl: payosResponse.data?.checkoutUrl || '',
+      qrCode: payosResponse.data?.qrCode,
+      orderCode: orderCode,
+    };
+  }
+
+  async handlePayosWebhook(webhookData: Record<string, any>): Promise<{
+    message: string;
+  }> {
+    this.logger.log(
+      `PayOS Webhook nhận được: ${JSON.stringify(webhookData)}`,
+    );
+
+    // Xác thực chữ ký từ PayOS
+    const { data, signature } = webhookData;
+
+    if (!data || !signature) {
+      throw new BadRequestException('Dữ liệu webhook không hợp lệ');
+    }
+
+    if (!this.payosService.verifySignature(data, signature)) {
+      this.logger.warn(`PayOS Webhook: chữ ký không hợp lệ`);
+      throw new BadRequestException('Chữ ký webhook không hợp lệ');
+    }
+
+    const { orderCode, status, amountPaid } = data;
+
+    if (status !== 'PAID') {
+      // Thanh toán thất bại hoặc chưa hoàn tất
+      this.logger.log(`PayOS Webhook: trạng thái không phải PAID: ${status}`);
+      return { message: `Payment status: ${status}` };
+    }
+
+    // Tìm payment dựa vào orderCode
+    // Vì ta không lưu trực tiếp orderCode trong DB, cần tìm payment từ paymentId
+    // Cách khác: lưu orderCode trong payment table hoặc tạo mapping table
+    // Tạm thời tìm payment pending gần nhất
+    const payment = await this.prisma.subscriptionPayment.findFirst({
+      where: {
+        payment_status: 'pending',
+        method: 'PAYOS',
+      },
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
+
+    if (!payment) {
+      throw new BadRequestException(
+        `Không tìm thấy pending payment cho orderCode: ${orderCode}`,
+      );
+    }
+
+    if (payment.payment_status === 'success') {
+      return { message: 'Payment đã được xử lý trước đó' };
+    }
+
+    // Cập nhật payment thành công và kích hoạt shop
+    await this.updateSubscriptionPaymentStatus(payment.id);
+
+    this.logger.log(`PayOS Webhook: xử lý thành công paymentId=${payment.id}`);
+    return { message: 'Webhook processed successfully' };
+  }
+
+  async renewPayosSubscription(userId: number): Promise<PayosPaymentResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true, profile: true },
+    });
+
+    if (!user || !user.shop_id) {
+      throw new BadRequestException('User chưa có shop. Không thể gia hạn.');
+    }
+    if (user.role?.role_code !== 'SHOPOWNER') {
+      throw new BadRequestException(
+        'Chỉ SHOPOWNER mới có quyền gia hạn subscription.',
+      );
+    }
+
+    const shopSubscription = await this.prisma.shopSubscription.findFirst({
+      where: { shop_id: user.shop_id },
+      orderBy: { created_at: 'desc' },
+      include: { subscription: true, shop: true },
+    });
+
+    if (!shopSubscription) {
+      throw new NotFoundException(
+        `Không tìm thấy subscription cho shop ID ${user.shop_id}`,
+      );
+    }
+
+    const existingPending = await this.prisma.subscriptionPayment.findFirst({
+      where: { sub_shop_id: shopSubscription.id, payment_status: 'pending' },
+    });
+    if (existingPending) {
+      throw new BadRequestException(
+        `Đã có payment đang chờ xử lý (Payment ID: ${existingPending.id}). Hoàn tất payment này trước.`,
+      );
+    }
+
+    const amount = Math.floor(
+      parseFloat(shopSubscription.subscription.price.toString()),
+    );
+
+    const payment = await this.prisma.subscriptionPayment.create({
+      data: {
+        sub_shop_id: shopSubscription.id,
+        method: 'PAYOS',
+        amount: amount,
+        payment_status: 'pending',
+      },
+    });
+
+    const orderCode = parseInt(`${Date.now()}${payment.id}`.slice(-10));
+    const description = `Gia han goi ${shopSubscription.subscription.package_code} cho shop ${shopSubscription.shop.shop_name}`;
+
+    let payosResponse;
+    try {
+      payosResponse = await this.payosService.createPayment(
+        orderCode,
+        amount,
+        description,
+        user.profile?.full_name ?? undefined,
+        user.profile?.phone ?? undefined,
+        user.email ?? undefined,
+      );
+    } catch (error) {
+      await this.prisma.subscriptionPayment.delete({ where: { id: payment.id } });
+      throw new BadRequestException(
+        `Không thể kết nối đến PayOS: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    if (payosResponse.code !== '00') {
+      await this.prisma.subscriptionPayment.delete({ where: { id: payment.id } });
+      throw new BadRequestException(
+        `Lỗi tạo thanh toán PayOS (code ${payosResponse.code}): ${payosResponse.desc}`,
+      );
+    }
+
+    return {
+      paymentId: payment.id,
+      amount: amount,
+      checkoutUrl: payosResponse.data?.checkoutUrl || '',
+      qrCode: payosResponse.data?.qrCode,
+      orderCode: orderCode,
     };
   }
 
