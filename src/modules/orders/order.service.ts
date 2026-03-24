@@ -55,12 +55,12 @@ export class OrderService {
 
       for (const item of order_items) {
         try {
-          this.inventoryService.decreaseItem({
+          await this.inventoryService.decreaseItem({
             product_id: item.product_id,
             shop_product_id: item.shop_product_id,
             quantity: item.quantity,
             shop_id: user.shop_id!
-          })
+          });
         } catch (error) {
           throw new BadRequestException('Error processing order: ' + error.message);
         }
