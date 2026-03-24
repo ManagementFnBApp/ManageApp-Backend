@@ -11,13 +11,14 @@ import {
   CreateInventoryItemDto,
   UpdateInventoryItemDto,
   InventoryItemResponseDto,
+  DecreaseItemDto,
 } from '../../dtos/inventory.dto';
 import { PrismaService } from 'db/prisma.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class InventoryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   // ========================================
   // INVENTORY CRUD
@@ -383,6 +384,62 @@ export class InventoryService {
     });
 
     return { message: `Inventory item with ID ${id} has been deleted` };
+  }
+
+  async decreaseItem(dto: DecreaseItemDto): Promise<void> {
+    const hasProduct = dto.product_id != null;
+    const hasShopProduct = dto.shop_product_id != null;
+
+    if ((hasProduct && hasShopProduct) || (!hasProduct && !hasShopProduct)) {
+      throw new BadRequestException(
+        'Provide exactly one of product',
+      );
+    }
+
+    if (!dto.quantity || dto.quantity <= 0) {
+      throw new BadRequestException('Quantity must be greater than zero');
+    }
+
+    await this.prisma.$transaction(async (prismaTx) => {
+      const inventories = await prismaTx.inventory.findMany({
+        where: { shop_id: dto.shop_id },
+        orderBy: { update_at: 'asc' },
+      });
+
+      let remaining = dto.quantity;
+
+      for (const inventory of inventories) {
+        if (remaining <= 0) {
+          break;
+        }
+
+        const inventoryItem = await prismaTx.inventoryItem.findFirst({
+          where: {
+            inventory_id: inventory.id,
+            product_id: hasProduct ? dto.product_id : null,
+            shop_product_id: hasShopProduct ? dto.shop_product_id : null,
+          },
+        });
+
+        if (!inventoryItem || inventoryItem.quantity <= 0) {
+          continue;
+        }
+
+        const deduct = Math.min(inventoryItem.quantity, remaining);
+        remaining -= deduct;
+
+        await prismaTx.inventoryItem.update({
+          where: { id: inventoryItem.id },
+          data: { quantity: inventoryItem.quantity - deduct },
+        });
+      }
+
+      if (remaining > 0) {
+        throw new BadRequestException(
+          'Insufficient inventory quantity to fulfill the decrease',
+        );
+      }
+    });
   }
 
   // ========================================
