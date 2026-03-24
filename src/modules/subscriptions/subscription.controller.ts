@@ -33,8 +33,8 @@ import {
   CreateSubscriptionPaymentDto,
   SubscriptionPaymentResponseDto,
   RenewSubscriptionPaymentDto,
-  CreateMomoSubscriptionPaymentDto,
-  MomoPaymentResponseDto,
+  CreatePayosSubscriptionPaymentDto,
+  PayosPaymentResponseDto,
 } from '../../dtos/subscription.dto';
 
 @ApiTags('Subscriptions')
@@ -265,59 +265,60 @@ export class SubscriptionController {
     return this.shopSubscriptionService.deleteExpiredShopsAfter14Days();
   }
 
-  // ==================== MOMO PAYMENT ENDPOINTS ====================
+  // ==================== PAYOS PAYMENT ENDPOINTS ====================
 
-  @Post('payments/momo')
+  @Post('payments/payos')
   @ApiOperation({
-    summary: 'Tạo thanh toán MoMo QR cho subscription - Cần login',
+    summary: 'Tạo thanh toán PayOS QR cho subscription - Cần login',
     description:
-      'Tạo yêu cầu thanh toán MoMo cho shop subscription. Response trả về `payUrl` để redirect user đến trang thanh toán MoMo (có QR code). Sau khi thanh toán thành công, MoMo sẽ tự động gọi IPN để kích hoạt shop.',
+      'Tạo yêu cầu thanh toán PayOS cho shop subscription. Response trả về `checkoutUrl` để redirect user đến trang thanh toán PayOS (có QR code) hoặc `qrCode` để hiển thị QR code riêng. Sau khi thanh toán thành công, PayOS sẽ tự động gọi webhook để kích hoạt shop.',
   })
   @ApiResponse({
     status: 201,
-    description: 'Tạo link thanh toán MoMo thành công',
-    type: MomoPaymentResponseDto,
+    description: 'Tạo link thanh toán PayOS thành công',
+    type: PayosPaymentResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Lỗi tạo thanh toán' })
   @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
-  async createMomoPayment(
-    @Body() dto: CreateMomoSubscriptionPaymentDto,
+  async createPayosPayment(
+    @Body() dto: CreatePayosSubscriptionPaymentDto,
     @Request() req: any,
-  ): Promise<MomoPaymentResponseDto> {
+  ): Promise<PayosPaymentResponseDto> {
     const userId = req.user?.id;
     if (!userId) {
       throw new UnauthorizedException(
         'Không tìm thấy userId trong token. Vui lòng đăng nhập lại.',
       );
     }
-    return this.shopSubscriptionService.createMomoSubscriptionPayment(
+    return this.shopSubscriptionService.createPayosSubscriptionPayment(
       dto.sub_shop_id,
+      userId,
     );
   }
 
-  @Post('payments/momo/ipn')
+  @Post('payments/payos/webhook')
   @Public()
   @ApiOperation({
-    summary: 'MoMo IPN Webhook (Public - chỉ dành cho MoMo gọi)',
+    summary: 'PayOS Webhook (Public - chỉ dành cho PayOS gọi)',
     description:
-      'Endpoint nhận thông báo thanh toán từ MoMo server. Tự động xác thực chữ ký và kích hoạt shop sau khi thanh toán thành công. KHÔNG gọi endpoint này từ frontend.',
+      'Endpoint nhận thông báo thanh toán từ PayOS server. Tự động xác thực chữ ký và kích hoạt shop sau khi thanh toán thành công. KHÔNG gọi endpoint này từ frontend.',
   })
-  @ApiResponse({ status: 200, description: 'IPN processed' })
-  async momoIPN(
+  @ApiResponse({ status: 200, description: 'Webhook processed' })
+  async payosWebhook(
     @Body() body: Record<string, any>,
   ): Promise<{ message: string }> {
-    return this.shopSubscriptionService.handleMomoIPN(body);
+    return this.shopSubscriptionService.handlePayosWebhook(body);
   }
 
-  @Get('payments/momo/callback')
+  @Get('payments/payos/callback')
   @Public()
   @ApiOperation({
-    summary: 'MoMo redirect callback sau thanh toán (Public)',
+    summary: 'PayOS redirect callback sau thanh toán (Public)',
     description:
-      'MoMo redirect user về endpoint này sau khi thanh toán. Backend xác nhận kết quả và redirect đến trang success/failed của frontend.',
+      'PayOS redirect user về endpoint này sau khi thanh toán. Backend xác nhận kết quả và redirect đến trang success/failed của frontend.',
   })
   @ApiResponse({ status: 302, description: 'Redirect đến frontend' })
-  async momoCallback(
+  async payosCallback(
     @Query() query: Record<string, string>,
     @Res() res: Response,
   ): Promise<void> {
@@ -325,40 +326,41 @@ export class SubscriptionController {
       'FRONTEND_URL',
       'http://localhost:5173',
     );
-    const { orderId, resultCode } = query;
+    const { orderCode, code, desc } = query;
 
-    if (resultCode === '0') {
+    // code = 00 là thành công
+    if (code === '00') {
       res.redirect(
-        `${frontendUrl}/payment/success?orderId=${orderId ?? ''}`,
+        `${frontendUrl}/payment/success?orderCode=${orderCode ?? ''}`,
       );
     } else {
       res.redirect(
-        `${frontendUrl}/payment/failed?orderId=${orderId ?? ''}&resultCode=${resultCode ?? ''}`,
+        `${frontendUrl}/payment/failed?orderCode=${orderCode ?? ''}&code=${code ?? ''}&desc=${desc ?? ''}`,
       );
     }
   }
 
-  @Post('renew/momo')
+  @Post('renew/payos')
   @ApiOperation({
-    summary: 'Gia hạn subscription bằng MoMo - Cần login (SHOPOWNER)',
+    summary: 'Gia hạn subscription bằng PayOS - Cần login (SHOPOWNER)',
     description:
-      'Tạo yêu cầu thanh toán MoMo để gia hạn subscription. Trả về `payUrl` để redirect user đến trang thanh toán MoMo.',
+      'Tạo yêu cầu thanh toán PayOS để gia hạn subscription. Trả về `checkoutUrl` để redirect user đến trang thanh toán PayOS.',
   })
   @ApiResponse({
     status: 201,
-    description: 'Tạo link gia hạn MoMo thành công',
-    type: MomoPaymentResponseDto,
+    description: 'Tạo link gia hạn PayOS thành công',
+    type: PayosPaymentResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
-  async renewMomoSubscription(
+  async renewPayosSubscription(
     @Request() req: any,
-  ): Promise<MomoPaymentResponseDto> {
+  ): Promise<PayosPaymentResponseDto> {
     const userId = req.user?.id;
     if (!userId) {
       throw new UnauthorizedException(
         'Không tìm thấy userId trong token. Vui lòng đăng nhập lại.',
       );
     }
-    return this.shopSubscriptionService.renewMomoSubscription(userId);
+    return this.shopSubscriptionService.renewPayosSubscription(userId);
   }
 } //het

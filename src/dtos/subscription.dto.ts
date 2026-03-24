@@ -187,9 +187,9 @@ export class SubscriptionResponseDto {
   deleted_at?: Date | null;
 }
 
-// ==================== MOMO PAYMENT DTOs ====================
+// ==================== PAYOS PAYMENT DTOs ====================
 
-export class CreateMomoSubscriptionPaymentDto {
+export class CreatePayosSubscriptionPaymentDto {
   @ApiProperty({
     example: 1,
     description: 'ID của shop subscription (lấy từ bước tạo shop)',
@@ -199,7 +199,7 @@ export class CreateMomoSubscriptionPaymentDto {
   sub_shop_id: number;
 }
 
-export class MomoPaymentResponseDto {
+export class PayosPaymentResponseDto {
   @ApiProperty({ example: 1 })
   paymentId: number;
 
@@ -207,22 +207,21 @@ export class MomoPaymentResponseDto {
   amount: number;
 
   @ApiProperty({
-    example: 'https://test-payment.momo.vn/v2/gateway/pay?...',
-    description: 'URL trang thanh toán MoMo - redirect user đến đây',
+    example: 'https://web.payos.vn/web/...',
+    description: 'URL trang thanh toán PayOS với QR code - redirect user đến đây',
   })
-  payUrl: string;
+  checkoutUrl: string;
 
   @ApiProperty({
-    example: 'https://...',
-    description: 'URL mã QR dạng ảnh (nếu có)',
+    example: 'https://qr.payos.vn/...',
+    description: 'URL mã QR code dạng ảnh',
     required: false,
   })
-  qrCodeUrl?: string;
+  qrCode?: string;
 
   @ApiProperty({
-    example: 'momo://...',
-    description: 'Deeplink mở app MoMo (nếu có)',
-    required: false,
+    example: 123456789,
+    description: 'Order code để theo dõi thanh toán',
   })
-  deeplink?: string;
+  orderCode: number;
 }

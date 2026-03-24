@@ -28,6 +28,10 @@ export class CreateShopProductDto {
     @Type(() => Number)
     listPrice: number;
 
+    @IsString()
+    @IsNotEmpty()
+    image: string;
+
     @IsNumber()
     @IsNotEmpty()
     @Type(() => Number)
