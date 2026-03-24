@@ -22,7 +22,7 @@ import { Public, Roles } from '../../decorators/decorators';
 @ApiTags('Roles')
 @Controller('roles')
 export class RoleController {
-  constructor(private readonly roleService: RoleService) {}
+  constructor(private readonly roleService: RoleService) { }
 
   // Lấy tất cả roles
   @Roles('SHOPOWNER')

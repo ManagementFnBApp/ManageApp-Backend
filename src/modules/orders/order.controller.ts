@@ -12,16 +12,16 @@ import { JwtPayloadDto } from 'src/dtos/login.dto';
 @Controller('orders')
 @UseGuards(AuthGuard)
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(private readonly orderService: OrderService) { }
 
   @Roles(Role.STAFF, Role.SHOPOWNER)
   @Post()
   async createOrder(
     @Body() createOrderDto: OrderDto,
-    @GetUser('id') userId: number,
+    @GetUser('') user: JwtPayloadDto,
   ): Promise<ResponseType<any>> {
     return new ResponseData(
-      await this.orderService.createOrder(createOrderDto, userId),
+      await this.orderService.createOrder(createOrderDto, user),
       HttpStatus.SUCCESS,
       HttpMessage.SUCCESS,
     );
