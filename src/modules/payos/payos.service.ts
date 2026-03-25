@@ -75,7 +75,7 @@ export class PayosService {
     );
     this.cancelUrl = this.configService.get<string>(
       'PAYOS_CANCEL_URL',
-      'http://localhost:3000/payment/failed',
+      'http://localhost:2999/subscriptions/payments/payos/callback',
     );
   }
 
@@ -91,7 +91,7 @@ export class PayosService {
     buyerEmail?: string,
   ): Promise<PayosPaymentResponse> {
     const returnUrl = `${this.returnUrl}`;
-    const cancelUrl = `${this.cancelUrl}`;
+    const cancelUrl = `${this.cancelUrl || this.returnUrl}`;
 
     const paymentData = {
       orderCode,

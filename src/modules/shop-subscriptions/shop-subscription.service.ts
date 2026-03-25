@@ -937,6 +937,10 @@ export class ShopSubscriptionService {
     const orderCode = Number(data.orderCode);
     const status = String(data.status ?? '');
 
+    if (!Number.isFinite(orderCode)) {
+      throw new BadRequestException('orderCode không hợp lệ trong webhook PayOS');
+    }
+
     const paymentId = this.extractPaymentIdFromOrderCode(orderCode);
     const payment = await this.prisma.subscriptionPayment.findUnique({
       where: { id: paymentId },
@@ -961,6 +965,14 @@ export class ShopSubscriptionService {
         });
       }
       return { message: `Payment status: ${status}` };
+    }
+
+    const webhookAmount = Number(data.amountPaid ?? data.amount ?? 0);
+    if (Number.isFinite(webhookAmount) && webhookAmount > 0) {
+      await this.prisma.subscriptionPayment.update({
+        where: { id: payment.id },
+        data: { amount: webhookAmount },
+      });
     }
 
     // Cập nhật payment thành công và kích hoạt shop
@@ -1081,6 +1093,7 @@ export class ShopSubscriptionService {
     if (!Number.isFinite(orderCode)) {
       return { updated: false, message: 'Thiếu orderCode trong callback' };
     }
+
 
     const paymentId = this.extractPaymentIdFromOrderCode(orderCode);
     const payment = await this.prisma.subscriptionPayment.findUnique({

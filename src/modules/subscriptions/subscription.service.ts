@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import {
   CreateSubscriptionDto,
+  SubscriptionMonthReportDto,
+  SubscriptionReportDto,
   UpdateSubscriptionDto,
   SubscriptionResponseDto,
 } from '../../dtos/subscription.dto';
@@ -172,6 +174,82 @@ export class SubscriptionService {
     return {
       deleted: safeToDelete.length,
       message: `Đã xóa vĩnh viễn ${safeToDelete.length} subscription đã inactive hơn 30 ngày`,
+    };
+  }
+
+  async subscriptionReport(
+    dto: SubscriptionMonthReportDto,
+  ): Promise<SubscriptionReportDto> {
+    const startDate = new Date(Date.UTC(dto.year, dto.month - 1, 1));
+    const nextMonth = new Date(Date.UTC(dto.year, dto.month, 1));
+
+    const monthlyWhere = {
+      created_at: {
+        gte: startDate,
+        lt: nextMonth,
+      },
+      payment_status: 'success',
+    };
+
+    const [numberOfPayments, payments] = await Promise.all([
+      this.prisma.subscriptionPayment.count({
+        where: monthlyWhere,
+      }),
+      this.prisma.subscriptionPayment.findMany({
+        where: monthlyWhere,
+        select: {
+          amount: true,
+          created_at: true,
+        },
+      }),
+    ]);
+
+    const dailyMap = new Map<
+      string,
+      { numberOfPayments: number; totalAmount: number }
+    >();
+    let totalAmount = 0;
+
+    payments.forEach((payment) => {
+      const dateKey = payment.created_at.toISOString().split('T')[0];
+      const current = dailyMap.get(dateKey) || {
+        numberOfPayments: 0,
+        totalAmount: 0,
+      };
+      const amount = Number(payment.amount);
+      totalAmount += amount;
+
+      dailyMap.set(dateKey, {
+        numberOfPayments: current.numberOfPayments + 1,
+        totalAmount: current.totalAmount + amount,
+      });
+    });
+
+    const report: {
+      date: Date;
+      numberOfPayments: number;
+      totalAmount: number;
+    }[] = [];
+
+    const endDate = new Date(Date.UTC(dto.year, dto.month, 0));
+    const daysInMonth = endDate.getUTCDate();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(Date.UTC(dto.year, dto.month - 1, day));
+      const dateKey = date.toISOString().split('T')[0];
+      const dailyData = dailyMap.get(dateKey);
+
+      report.push({
+        date,
+        numberOfPayments: dailyData?.numberOfPayments || 0,
+        totalAmount: dailyData?.totalAmount || 0,
+      });
+    }
+
+    return {
+      numberOfPayments,
+      totalAmount,
+      reportByDate: report,
     };
   }
 
