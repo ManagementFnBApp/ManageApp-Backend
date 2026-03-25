@@ -49,7 +49,8 @@ export class PayosService {
   private readonly apiKey: string;
   private readonly checksumKey: string;
   private readonly endpoint: string;
-  private readonly redirectUrl: string;
+  private readonly returnUrl: string;
+  private readonly cancelUrl: string;
 
   constructor(private configService: ConfigService) {
     this.clientId = this.configService.get<string>(
@@ -68,9 +69,13 @@ export class PayosService {
       'PAYOS_ENDPOINT',
       'https://api-merchant.payos.vn/v2',
     );
-    this.redirectUrl = this.configService.get<string>(
-      'PAYOS_REDIRECT_URL',
-      'http://localhost:5173/payment/success',
+    this.returnUrl = this.configService.get<string>(
+      'PAYOS_RETURN_URL',
+      'http://localhost:2999/subscriptions/payments/payos/callback',
+    );
+    this.cancelUrl = this.configService.get<string>(
+      'PAYOS_CANCEL_URL',
+      'http://localhost:3000/payment/failed',
     );
   }
 
@@ -85,8 +90,8 @@ export class PayosService {
     buyerPhone?: string,
     buyerEmail?: string,
   ): Promise<PayosPaymentResponse> {
-    const returnUrl = `${this.redirectUrl}?orderCode=${orderCode}`;
-    const cancelUrl = `${this.redirectUrl}?orderCode=${orderCode}&cancelled=true`;
+    const returnUrl = `${this.returnUrl}`;
+    const cancelUrl = `${this.cancelUrl}`;
 
     const paymentData = {
       orderCode,

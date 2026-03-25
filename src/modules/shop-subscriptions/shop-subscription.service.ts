@@ -853,9 +853,7 @@ export class ShopSubscriptionService {
       },
     });
 
-    // orderCode là unique identifier cho PayOS
-    // Sử dụng timestamp + paymentId để tạo unique orderCode
-    const orderCode = parseInt(`${Date.now()}${payment.id}`.slice(-10));
+    const orderCode = this.generatePayosOrderCode(payment.id);
     const description = this.buildPayosDescription(
       shopSubscription.subscription.package_code,
       shopSubscription.shop_id,
@@ -936,36 +934,33 @@ export class ShopSubscriptionService {
       throw new BadRequestException('Chữ ký webhook không hợp lệ');
     }
 
-    const { orderCode, status, amountPaid } = data;
+    const orderCode = Number(data.orderCode);
+    const status = String(data.status ?? '');
 
-    if (status !== 'PAID') {
-      // Thanh toán thất bại hoặc chưa hoàn tất
-      this.logger.log(`PayOS Webhook: trạng thái không phải PAID: ${status}`);
-      return { message: `Payment status: ${status}` };
-    }
-
-    // Tìm payment dựa vào orderCode
-    // Vì ta không lưu trực tiếp orderCode trong DB, cần tìm payment từ paymentId
-    // Cách khác: lưu orderCode trong payment table hoặc tạo mapping table
-    // Tạm thời tìm payment pending gần nhất
-    const payment = await this.prisma.subscriptionPayment.findFirst({
-      where: {
-        payment_status: 'pending',
-        method: 'PAYOS',
-      },
-      orderBy: {
-        created_at: 'desc',
-      },
+    const paymentId = this.extractPaymentIdFromOrderCode(orderCode);
+    const payment = await this.prisma.subscriptionPayment.findUnique({
+      where: { id: paymentId },
     });
 
-    if (!payment) {
+    if (!payment || payment.method !== 'PAYOS') {
       throw new BadRequestException(
-        `Không tìm thấy pending payment cho orderCode: ${orderCode}`,
+        `Không tìm thấy payment PAYOS cho orderCode: ${orderCode}`,
       );
     }
 
     if (payment.payment_status === 'success') {
       return { message: 'Payment đã được xử lý trước đó' };
+    }
+
+    if (status !== 'PAID') {
+      this.logger.log(`PayOS Webhook: trạng thái không phải PAID: ${status}`);
+      if (payment.payment_status === 'pending') {
+        await this.prisma.subscriptionPayment.update({
+          where: { id: payment.id },
+          data: { payment_status: 'failed' },
+        });
+      }
+      return { message: `Payment status: ${status}` };
     }
 
     // Cập nhật payment thành công và kích hoạt shop
@@ -1024,7 +1019,7 @@ export class ShopSubscriptionService {
       },
     });
 
-    const orderCode = parseInt(`${Date.now()}${payment.id}`.slice(-10));
+    const orderCode = this.generatePayosOrderCode(payment.id);
     const description = this.buildPayosDescription(
       shopSubscription.subscription.package_code,
       shopSubscription.shop_id,
@@ -1076,6 +1071,49 @@ export class ShopSubscriptionService {
     };
   }
 
+  async handlePayosCallback(query: Record<string, string>): Promise<{
+    updated: boolean;
+    message: string;
+  }> {
+    const code = String(query.code ?? '');
+    const orderCode = Number(query.orderCode);
+
+    if (!Number.isFinite(orderCode)) {
+      return { updated: false, message: 'Thiếu orderCode trong callback' };
+    }
+
+    const paymentId = this.extractPaymentIdFromOrderCode(orderCode);
+    const payment = await this.prisma.subscriptionPayment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment || payment.method !== 'PAYOS') {
+      return { updated: false, message: 'Không tìm thấy payment PAYOS' };
+    }
+
+    if (payment.payment_status === 'success') {
+      return { updated: false, message: 'Payment đã success trước đó' };
+    }
+
+    if (code === '00') {
+      if (payment.payment_status === 'pending') {
+        await this.updateSubscriptionPaymentStatus(payment.id);
+        return { updated: true, message: 'Đã cập nhật payment success từ callback' };
+      }
+      return { updated: false, message: `Payment hiện tại: ${payment.payment_status}` };
+    }
+
+    if (payment.payment_status === 'pending') {
+      await this.prisma.subscriptionPayment.update({
+        where: { id: payment.id },
+        data: { payment_status: 'failed' },
+      });
+      return { updated: true, message: 'Đã cập nhật payment failed từ callback' };
+    }
+
+    return { updated: false, message: `Payment hiện tại: ${payment.payment_status}` };
+  }
+
   private transformPaymentToDto(
     payment: any,
     user: any,
@@ -1113,5 +1151,22 @@ export class ShopSubscriptionService {
 
     // PayOS allows max 25 chars for description.
     return raw.length > 25 ? raw.slice(0, 25) : raw;
+  }
+
+  private generatePayosOrderCode(paymentId: number): number {
+    // Keep orderCode numeric while allowing deterministic reverse mapping.
+    const base = 700000000;
+    return base + paymentId;
+  }
+
+  private extractPaymentIdFromOrderCode(orderCode: number): number {
+    const base = 700000000;
+    const paymentId = orderCode - base;
+
+    if (!Number.isInteger(paymentId) || paymentId <= 0) {
+      throw new BadRequestException(`orderCode không hợp lệ: ${orderCode}`);
+    }
+
+    return paymentId;
   }
 }
