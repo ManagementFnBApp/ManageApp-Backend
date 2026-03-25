@@ -328,6 +328,9 @@ export class SubscriptionController {
     );
     const { orderCode, code, desc } = query;
 
+    // Fallback update: if webhook chưa bắn hoặc bị miss, callback vẫn cập nhật DB.
+    await this.shopSubscriptionService.handlePayosCallback(query);
+
     // code = 00 là thành công
     if (code === '00') {
       res.redirect(
