@@ -35,6 +35,8 @@ import {
   RenewSubscriptionPaymentDto,
   CreatePayosSubscriptionPaymentDto,
   PayosPaymentResponseDto,
+  SubscriptionMonthReportDto,
+  SubscriptionReportDto,
 } from '../../dtos/subscription.dto';
 
 @ApiTags('Subscriptions')
@@ -96,6 +98,20 @@ export   class SubscriptionController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<{ message: string }> {
     return this.subscriptionService.deleteSubscription(id);
+  }
+
+  @Post('report')
+  @Roles('ADMIN')
+  @ApiOperation({
+    summary: 'Báo cáo doanh thu subscription theo tháng (Chỉ Admin)',
+    description:
+      'Cộng tổng các payment subscription có trạng thái success trong tháng và trả về thống kê theo từng ngày (fill đủ ngày trong tháng).',
+  })
+  @ApiResponse({ status: 200, description: 'Lấy báo cáo thành công' })
+  async subscriptionReport(
+    @Body() dto: SubscriptionMonthReportDto,
+  ): Promise<SubscriptionReportDto> {
+    return this.subscriptionService.subscriptionReport(dto);
   }
 
   // ==================== SHOP SUBSCRIPTION ENDPOINTS ====================

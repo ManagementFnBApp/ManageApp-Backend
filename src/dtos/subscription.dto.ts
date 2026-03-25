@@ -225,3 +225,27 @@ export class PayosPaymentResponseDto {
   })
   orderCode: number;
 }
+
+export class SubscriptionMonthReportDto {
+  @ApiProperty({ example: 2026 })
+  @IsInt()
+  @IsNotEmpty()
+  year: number;
+
+  @ApiProperty({ example: 3 })
+  @IsInt()
+  @IsNotEmpty()
+  month: number;
+}
+
+export class SubscriptionReportByDateDto {
+  date: Date;
+  numberOfPayments: number;
+  totalAmount: number;
+}
+
+export class SubscriptionReportDto {
+  numberOfPayments: number;
+  totalAmount: number;
+  reportByDate: SubscriptionReportByDateDto[];
+}
