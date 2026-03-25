@@ -22,9 +22,9 @@ import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
 @Controller('customers')
 @UseGuards(AuthGuard)
 export class CustomerController {
-  constructor(private customerService: CustomerService) {}
+  constructor(private customerService: CustomerService) { }
 
-  @Roles(Role.STAFF)
+  @Roles(Role.STAFF, Role.SHOPOWNER)
   @Post()
   async createCustomer(
     @Body() createCustomerDto: CreateCustomerDto,
@@ -32,7 +32,7 @@ export class CustomerController {
     return this.customerService.createCustomer(createCustomerDto);
   }
 
-  @Roles(Role.SHOPOWNER)
+  @Roles(Role.SHOPOWNER, Role.STAFF)
   @Get()
   async getAllCustomers(
     @GetUser('shop_id') shop_id: number,
@@ -52,27 +52,7 @@ export class CustomerController {
     }
   }
 
-  @Get(':id')
-  async getCustomerById(
-    @Param('id') id: number,
-    @GetUser('shop_id') shop_id: number,
-  ): Promise<ResponseType<CustomerResponseDto>> {
-    try {
-      return new ResponseData<CustomerResponseDto>(
-        await this.customerService.getCustomerById(id, shop_id),
-        HttpStatus.SUCCESS,
-        HttpMessage.SUCCESS,
-      );
-    } catch (error) {
-      return new ResponseData<CustomerResponseDto>(
-        null,
-        HttpStatus.ERROR,
-        error.message,
-      );
-    }
-  }
-
-  @Roles(Role.STAFF)
+  @Roles(Role.SHOPOWNER, Role.STAFF)
   @Get(':phone')
   async getCustomerByPhone(
     @Param('phone') phone: string,
@@ -93,7 +73,7 @@ export class CustomerController {
     }
   }
 
-  @Roles(Role.STAFF)
+  @Roles(Role.SHOPOWNER, Role.STAFF)
   @Put(':id')
   async updateCustomer(
     @Param('id') id: number,
@@ -140,7 +120,7 @@ export class CustomerController {
     }
   }
 
-  @Roles(Role.STAFF)
+  @Roles(Role.SHOPOWNER, Role.STAFF)
   @Put(':id/loyalty-points')
   async updateLoyaltyPoints(
     @Param('id') id: number,

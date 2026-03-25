@@ -23,7 +23,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private readonly emailService: EmailService,
-  ) {}
+  ) { }
 
   private readonly temporaryUsers: Map<string, string> = new Map();
   private readonly codeExpiration: Map<string, Date> = new Map();
@@ -33,7 +33,7 @@ export class AuthService {
   }
 
   async login({ username, password }: LoginDto): Promise<AuthPermission> {
-    const user = await this.userService.getUserByUsername(username);
+    const user = await this.userService.getUserByUsernameOrEmail(username);
     if (!user) {
       throw new UnauthorizedException('Username or password is incorrect');
     }

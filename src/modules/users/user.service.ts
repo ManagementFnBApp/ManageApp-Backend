@@ -33,9 +33,14 @@ export class UserService {
     return users.map((user) => this.transformToDto(user));
   }
 
-  async getUserByUsername(username: string): Promise<UserResponseDto | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { username },
+  async getUserByUsernameOrEmail(usernameOrEmail: string): Promise<UserResponseDto | null> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: usernameOrEmail },
+          { email: usernameOrEmail }
+        ]
+      },
       include: {
         role: true,
         profile: true,

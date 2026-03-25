@@ -11,13 +11,14 @@ import {
   CreateInventoryItemDto,
   UpdateInventoryItemDto,
   InventoryItemResponseDto,
+  DecreaseItemDto,
 } from '../../dtos/inventory.dto';
 import { PrismaService } from 'db/prisma.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class InventoryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   // ========================================
   // INVENTORY CRUD
@@ -383,6 +384,80 @@ export class InventoryService {
     });
 
     return { message: `Inventory item with ID ${id} has been deleted` };
+  }
+
+  async decreaseItem(dto: DecreaseItemDto, externalTx?: any): Promise<void> {
+    const hasProduct = dto.product_id != null;
+    const hasShopProduct = dto.shop_product_id != null;
+
+    if ((hasProduct && hasShopProduct) || (!hasProduct && !hasShopProduct)) {
+      throw new BadRequestException(
+        'Provide exactly one of product',
+      );
+    }
+
+    if (!dto.quantity || dto.quantity <= 0) {
+      throw new BadRequestException('Quantity must be greater than zero');
+    }
+
+    const executeDecrease = async (prismaTx) => {
+      const inventories = await prismaTx.inventory.findMany({
+        where: { shop_id: dto.shop_id },
+        orderBy: { update_at: 'asc' },
+      });
+
+      let remaining = dto.quantity;
+
+      for (const inventory of inventories) {
+        if (remaining <= 0) {
+          break;
+        }
+
+        const inventoryItem = await prismaTx.inventoryItem.findFirst({
+          where: {
+            inventory_id: inventory.id,
+            product_id: hasProduct ? dto.product_id : null,
+            shop_product_id: hasShopProduct ? dto.shop_product_id : null,
+          },
+        });
+
+        if (!inventoryItem || inventoryItem.quantity <= 0) {
+          continue;
+        }
+
+        const deduct = Math.min(inventoryItem.quantity, remaining);
+
+        const updateResult = await prismaTx.inventoryItem.updateMany({
+          where: {
+            id: inventoryItem.id,
+            quantity: { gte: deduct }, // Đảm bảo số tồn thực tế vẫn đủ để trừ số 'deduct' này
+          },
+          data: { quantity: { decrement: deduct } },
+        });
+
+        // Nếu count === 0, có một giao dịch khác đã trừ mất hàng trong tích tắc vừa rồi
+        if (updateResult.count === 0) {
+          throw new ConflictException(
+            'Xung đột dữ liệu tồn kho do có nhiều giao dịch cùng lúc. Vui lòng thử lại.',
+          );
+        }
+
+        remaining -= deduct;
+      }
+
+      if (remaining > 0) {
+        throw new BadRequestException(
+          'Insufficient inventory quantity to fulfill the decrease',
+        );
+      }
+    };
+    if (externalTx) {
+      // Nếu có transaction từ bên ngoài truyền vào (từ hàm tạo Order), dùng chung nó
+      await executeDecrease(externalTx);
+    } else {
+      // Nếu không có, tự khởi tạo transaction mới
+      await this.prisma.$transaction(executeDecrease);
+    }
   }
 
   // ========================================
