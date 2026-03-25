@@ -4,8 +4,11 @@ import * as crypto from 'crypto';
 import * as https from 'https';
 
 export interface PayosPaymentResponse {
-  code: string;
-  desc: string;
+  code?: string;
+  desc?: string;
+  statusCode?: number;
+  message?: string;
+  error?: string;
   data?: {
     checkoutUrl: string;
     qrCode: string;
@@ -63,7 +66,7 @@ export class PayosService {
     );
     this.endpoint = this.configService.get<string>(
       'PAYOS_ENDPOINT',
-      'https://api-merchant.payos.vn/v1',
+      'https://api-merchant.payos.vn/v2',
     );
     this.redirectUrl = this.configService.get<string>(
       'PAYOS_REDIRECT_URL',
@@ -89,14 +92,14 @@ export class PayosService {
       orderCode,
       amount,
       description,
-      buyerName: buyerName || 'Khách hàng',
+      buyerName: buyerName || 'Khach hang',
       buyerPhone: buyerPhone || '',
       buyerEmail: buyerEmail || '',
       returnUrl,
       cancelUrl,
     };
 
-    const signature = this.generateSignature(paymentData);
+    const signature = this.generateCreatePaymentSignature(paymentData);
 
     const body = JSON.stringify({
       ...paymentData,
@@ -172,6 +175,28 @@ export class PayosService {
   /**
    * Tạo chữ ký cho dữ liệu
    */
+  private generateCreatePaymentSignature(data: {
+    orderCode: number;
+    amount: number;
+    description: string;
+    returnUrl: string;
+    cancelUrl: string;
+  }): string {
+    // PayOS expects this exact canonical string for create payment request.
+    const signData = [
+      `amount=${data.amount}`,
+      `cancelUrl=${data.cancelUrl}`,
+      `description=${data.description}`,
+      `orderCode=${data.orderCode}`,
+      `returnUrl=${data.returnUrl}`,
+    ].join('&');
+
+    return crypto
+      .createHmac('sha256', this.checksumKey)
+      .update(signData)
+      .digest('hex');
+  }
+
   private generateSignature(data: Record<string, any>): string {
     const dataString = Object.keys(data)
       .sort()
@@ -211,9 +236,22 @@ export class PayosService {
         });
         res.on('end', () => {
           try {
-            resolve(JSON.parse(data) as PayosPaymentResponse);
+            const parsed = JSON.parse(data) as PayosPaymentResponse;
+            const statusCode = res.statusCode ?? 500;
+
+            if (statusCode >= 400) {
+              const detail =
+                parsed.desc ??
+                parsed.message ??
+                parsed.error ??
+                `HTTP ${statusCode}`;
+              reject(new Error(`PayOS API lỗi (${statusCode}): ${detail}`));
+              return;
+            }
+
+            resolve(parsed);
           } catch {
-            reject(new Error('Failed to parse PayOS response'));
+            reject(new Error(`PayOS trả về không hợp lệ: ${data}`));
           }
         });
       });

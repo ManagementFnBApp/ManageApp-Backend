@@ -856,7 +856,11 @@ export class ShopSubscriptionService {
     // orderCode là unique identifier cho PayOS
     // Sử dụng timestamp + paymentId để tạo unique orderCode
     const orderCode = parseInt(`${Date.now()}${payment.id}`.slice(-10));
-    const description = `Thanh toan goi ${shopSubscription.subscription.package_code} cho shop ${shopSubscription.shop.shop_name}`;
+    const description = this.buildPayosDescription(
+      shopSubscription.subscription.package_code,
+      shopSubscription.shop_id,
+      false,
+    );
 
     // Lấy thông tin user để truyền vào PayOS
     const user = await this.prisma.user.findUnique({
@@ -882,10 +886,22 @@ export class ShopSubscriptionService {
       );
     }
 
-    if (payosResponse.code !== '00') {
+    const payosCode = String(
+      payosResponse.code ?? payosResponse.statusCode ?? '',
+    );
+    const payosDesc =
+      payosResponse.desc ??
+      payosResponse.message ??
+      payosResponse.error ??
+      'Không rõ nguyên nhân';
+
+    if (payosCode !== '00') {
+      this.logger.error(
+        `PayOS create payment fail response: ${JSON.stringify(payosResponse)}`,
+      );
       await this.prisma.subscriptionPayment.delete({ where: { id: payment.id } });
       throw new BadRequestException(
-        `Lỗi tạo thanh toán PayOS (code ${payosResponse.code}): ${payosResponse.desc}`,
+        `Lỗi tạo thanh toán PayOS (code ${payosCode || 'N/A'}): ${payosDesc}`,
       );
     }
 
@@ -1009,7 +1025,11 @@ export class ShopSubscriptionService {
     });
 
     const orderCode = parseInt(`${Date.now()}${payment.id}`.slice(-10));
-    const description = `Gia han goi ${shopSubscription.subscription.package_code} cho shop ${shopSubscription.shop.shop_name}`;
+    const description = this.buildPayosDescription(
+      shopSubscription.subscription.package_code,
+      shopSubscription.shop_id,
+      true,
+    );
 
     let payosResponse;
     try {
@@ -1028,10 +1048,22 @@ export class ShopSubscriptionService {
       );
     }
 
-    if (payosResponse.code !== '00') {
+    const payosCode = String(
+      payosResponse.code ?? payosResponse.statusCode ?? '',
+    );
+    const payosDesc =
+      payosResponse.desc ??
+      payosResponse.message ??
+      payosResponse.error ??
+      'Không rõ nguyên nhân';
+
+    if (payosCode !== '00') {
+      this.logger.error(
+        `PayOS renew payment fail response: ${JSON.stringify(payosResponse)}`,
+      );
       await this.prisma.subscriptionPayment.delete({ where: { id: payment.id } });
       throw new BadRequestException(
-        `Lỗi tạo thanh toán PayOS (code ${payosResponse.code}): ${payosResponse.desc}`,
+        `Lỗi tạo thanh toán PayOS (code ${payosCode || 'N/A'}): ${payosDesc}`,
       );
     }
 
@@ -1069,5 +1101,17 @@ export class ShopSubscriptionService {
           }
         : undefined,
     };
+  }
+
+  private buildPayosDescription(
+    packageCode: string,
+    shopId: number,
+    isRenew: boolean,
+  ): string {
+    const prefix = isRenew ? 'GH' : 'TT';
+    const raw = `${prefix}-${packageCode}-S${shopId}`;
+
+    // PayOS allows max 25 chars for description.
+    return raw.length > 25 ? raw.slice(0, 25) : raw;
   }
 }
