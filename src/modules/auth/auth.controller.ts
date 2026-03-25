@@ -10,8 +10,8 @@ import {
 import { ResetPasswordDto } from '../../dtos/reset-password.dto';
 import { HttpMessage, HttpStatus } from 'src/global/globalEnum';
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
-import { Public, Roles } from 'src/decorators/decorators';
 import { UserResponseDto } from 'src/dtos/user.dto';
+import { Public } from 'src/decorators/decorators';
 
 @ApiTags('Authentication')
 @Controller('auth')

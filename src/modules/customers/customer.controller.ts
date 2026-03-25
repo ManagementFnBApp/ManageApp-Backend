@@ -32,7 +32,7 @@ export class CustomerController {
     return this.customerService.createCustomer(createCustomerDto);
   }
 
-  @Roles(Role.SHOPOWNER)
+  @Roles(Role.SHOPOWNER, Role.STAFF)
   @Get()
   async getAllCustomers(
     @GetUser('shop_id') shop_id: number,
