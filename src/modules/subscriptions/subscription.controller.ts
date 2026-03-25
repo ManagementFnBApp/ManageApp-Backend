@@ -40,7 +40,7 @@ import {
 @ApiTags('Subscriptions')
 @ApiBearerAuth()
 @Controller('subscriptions')
-export class SubscriptionController {
+export   class SubscriptionController {
   constructor(
     private readonly subscriptionService: SubscriptionService,
     private readonly shopSubscriptionService: ShopSubscriptionService,
