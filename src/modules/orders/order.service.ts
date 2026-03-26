@@ -528,18 +528,21 @@ export class OrderService {
     // Verify signature using shop's checksumKey
     if (signature) {
       const { signature: _sig, ...dataWithoutSig } = webhookData.data;
-      const isValid = await this.payosService.verifyShopWebhookSignature(
-        dataWithoutSig,
-        signature,
-        matchedPayment.shopId,
-      );
+    if (!signature || signature.trim() === '') {
+      this.logger.warn(`Missing webhook signature for orderCode ${orderCode}`);
+      throw new BadRequestException('Missing webhook signature');
+    }
 
-      if (!isValid) {
-        this.logger.warn(
-          `Invalid webhook signature for orderCode ${orderCode}`,
-        );
-        throw new BadRequestException('Invalid webhook signature');
-      }
+    const { signature: _sig, ...dataWithoutSig } = webhookData.data;
+    const isValid = await this.payosService.verifyShopWebhookSignature(
+      dataWithoutSig,
+      signature,
+      matchedPayment.shopId,
+    );
+
+    if (!isValid) {
+      this.logger.warn(`Invalid webhook signature for orderCode ${orderCode}`);
+      throw new BadRequestException('Invalid webhook signature');
     }
 
     // Update based on status
