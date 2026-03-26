@@ -1,5 +1,6 @@
 import { PartialType } from '@nestjs/swagger';
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { PayosPaymentResponse } from 'src/modules/payos/payos.service';
 
 export class CreatePaymentAccountDto {
   @IsString()
@@ -22,3 +23,8 @@ export class CreatePaymentAccountDto {
 export class UpdatePaymentAccountDto extends PartialType(
   CreatePaymentAccountDto,
 ) {}
+
+export interface CreateOrderPaymentResult {
+  orderCode: string;
+  payosResponse: PayosPaymentResponse;
+}

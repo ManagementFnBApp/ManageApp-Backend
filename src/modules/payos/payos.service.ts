@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from 'db/prisma.service';
 import * as https from 'https';
 import { OrderDto } from 'src/dtos/oder.dto';
+import { CreateOrderPaymentResult } from 'src/dtos/payment-account.dto';
 import { KmsEncryptionService } from 'src/modules/kms/kms-encryption.service';
 
 export interface PayosPaymentResponse {
@@ -336,7 +337,7 @@ export class PayosService {
     shopId: number,
     orderData: OrderDto,
     order_id: number,
-  ): Promise<PayosPaymentResponse> {
+  ): Promise<CreateOrderPaymentResult> {
     const shopPayment = await this.prisma.paymentAccount.findFirst({
       where: {
         shop_id: shopId,
@@ -356,11 +357,7 @@ export class PayosService {
       shopPayment.encrypted_dek,
     );
 
-    const amount = Math.floor(
-      Number(
-        orderData.totalAmount,
-      ),
-    );
+    const amount = Math.floor(Number(orderData.totalAmount));
 
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error('Invalid order amount for PayOS payment');
@@ -409,12 +406,17 @@ export class PayosService {
       `Tạo PayOS payment theo shop: shopId=${shopId}, orderCode=${orderCode}, amount=${amount}`,
     );
 
-    return this.postRequestWithCredentials(
+    const payosResponse = await this.postRequestWithCredentials(
       '/payment-requests',
       body,
       shopPayment.client_id,
       apiKey,
     );
+
+    return {
+      orderCode: String(orderCode),
+      payosResponse,
+    };
   }
 
   /**

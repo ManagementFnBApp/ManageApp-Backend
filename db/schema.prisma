@@ -294,6 +294,7 @@ model Payment {
   currency       String   @default("VND")
   payment_method String
   payment_status String
+  payos_order_code String?  @unique
   created_at     DateTime @default(now())
   update_at      DateTime @updatedAt
   order          Orders   @relation(fields: [order_id], references: [id])

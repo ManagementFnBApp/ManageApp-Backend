@@ -5,6 +5,11 @@ import { PrismaService } from 'db/prisma.service';
 export class ShopService {
   constructor(private prisma: PrismaService) {}
 
-  // Shop service methods will be added here as needed
-  // Currently handling shop operations through ShopSubscriptionService
+  async isActiveShop(shopId: number): Promise<boolean> {
+    const shop = await this.prisma.shop.findUnique({
+      where: { id: shopId },
+      select: { is_active: true },
+    });
+    return shop?.is_active ?? false;
+  }
 }

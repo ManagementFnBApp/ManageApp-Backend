@@ -1,5 +1,11 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { OrderDto, OrderMonthReportDto, OrderReportDto, OrderResponseDto, ViewOrderDto } from 'src/dtos/oder.dto';
+import {
+  OrderDto,
+  OrderMonthReportDto,
+  OrderReportDto,
+  OrderResponseDto,
+  ViewOrderDto,
+} from 'src/dtos/oder.dto';
 import { OrderStatus } from 'src/global/globalEnum';
 import { PrismaService } from 'db/prisma.service';
 import { JwtPayloadDto } from 'src/dtos/login.dto';
@@ -16,8 +22,7 @@ export class OrderService {
     private prisma: PrismaService,
     private readonly inventoryService: InventoryService,
     private readonly payosService: PayosService,
-  ) { }
-
+  ) {}
 
   async createOrder(data: OrderDto, user: JwtPayloadDto): Promise<any> {
     if (user.shop_id == null || user.shop_id == undefined) {
@@ -30,15 +35,23 @@ export class OrderService {
       const hasProduct = item.product_id != null;
       const hasShopProduct = item.shop_product_id != null;
       if (hasProduct && hasShopProduct) {
-        throw new BadRequestException('Each order item must reference either a product or a shop product, not both.');
+        throw new BadRequestException(
+          'Each order item must reference either a product or a shop product, not both.',
+        );
       }
       if (!hasProduct && !hasShopProduct) {
-        throw new BadRequestException('Each order item must reference either a product or a shop product.');
+        throw new BadRequestException(
+          'Each order item must reference either a product or a shop product.',
+        );
       }
     }
 
-    const productIds = order_items.map((item) => item.product_id).filter((id) => id != null);
-    const shopProductIds = order_items.map((item) => item.shop_product_id).filter((id) => id != null);
+    const productIds = order_items
+      .map((item) => item.product_id)
+      .filter((id) => id != null);
+    const shopProductIds = order_items
+      .map((item) => item.shop_product_id)
+      .filter((id) => id != null);
 
     const order = await this.prisma.$transaction(async (prismaTx) => {
       // Kiểm tra sự tồn tại của sản phẩm trong cùng transaction để tránh race condition
@@ -56,7 +69,10 @@ export class OrderService {
         select: { id: true },
       });
 
-      if (existingProducts.length !== productIds.length || existingShopProducts.length !== shopProductIds.length) {
+      if (
+        existingProducts.length !== productIds.length ||
+        existingShopProducts.length !== shopProductIds.length
+      ) {
         throw new BadRequestException('One or more products do not exist');
       }
 
@@ -66,10 +82,12 @@ export class OrderService {
             product_id: item.product_id,
             shop_product_id: item.shop_product_id,
             quantity: item.quantity,
-            shop_id: user.shop_id!
-          })
+            shop_id: user.shop_id!,
+          });
         } catch (error) {
-          throw new BadRequestException('Error processing order: ' + error.message);
+          throw new BadRequestException(
+            'Error processing order: ' + error.message,
+          );
         }
       }
 
@@ -94,7 +112,7 @@ export class OrderService {
               },
               shop_product: {
                 select: { product_name: true },
-              }
+              },
             },
           },
         },
@@ -104,7 +122,8 @@ export class OrderService {
     return {
       id: order.id,
       items: order.order_items.map((item) => ({
-        product_name: item.product?.product_name || item.shop_product?.product_name || '',
+        product_name:
+          item.product?.product_name || item.shop_product?.product_name || '',
         quantity: item.quantity,
       })),
     };
@@ -123,15 +142,21 @@ export class OrderService {
         const hasProduct = item.product_id != null;
         const hasShopProduct = item.shop_product_id != null;
         if (hasProduct && hasShopProduct) {
-          throw new BadRequestException('Each order item must reference either a product or a shop product, not both.');
+          throw new BadRequestException(
+            'Each order item must reference either a product or a shop product, not both.',
+          );
         }
         if (!hasProduct && !hasShopProduct) {
-          throw new BadRequestException('Each order item must reference either a product or a shop product.');
+          throw new BadRequestException(
+            'Each order item must reference either a product or a shop product.',
+          );
         }
       }
 
       // Validate that all products exist
-      const productIds = order_items.map((item) => item.product_id).filter((id) => id != null);
+      const productIds = order_items
+        .map((item) => item.product_id)
+        .filter((id) => id != null);
       const existingProducts = await prismaTx.product.findMany({
         where: {
           id: { in: productIds },
@@ -139,7 +164,9 @@ export class OrderService {
         select: { id: true },
       });
 
-      const shopProductIds = order_items.map((item) => item.shop_product_id).filter((id) => id != null);
+      const shopProductIds = order_items
+        .map((item) => item.shop_product_id)
+        .filter((id) => id != null);
       const existingShopProducts = await prismaTx.shopProduct.findMany({
         where: {
           id: { in: shopProductIds },
@@ -147,7 +174,10 @@ export class OrderService {
         select: { id: true },
       });
 
-      if (existingProducts.length !== productIds.length || existingShopProducts.length !== shopProductIds.length) {
+      if (
+        existingProducts.length !== productIds.length ||
+        existingShopProducts.length !== shopProductIds.length
+      ) {
         throw new BadRequestException('One or more products do not exist');
       }
 
@@ -189,35 +219,41 @@ export class OrderService {
     return {
       id: order.id,
       items: order.order_items.map((item) => ({
-        product_name: item.product?.product_name || item.shop_product?.product_name || '',
+        product_name:
+          item.product?.product_name || item.shop_product?.product_name || '',
         quantity: item.quantity,
       })),
     };
   }
 
   async completeOrder(id: number): Promise<OrderResponseDto> {
-    const order = await this.prisma.$transaction(async (tx) => {
-      const updatedOrder = await tx.orders.update({
-        where: { id: Number(id) },
-        data: {
-          order_status: OrderStatus.COMPLETED,
-          completed_at: new Date(),
-        },
-      });
+    const order = await this.prisma.$transaction(
+      async (tx) => {
+        const updatedOrder = await tx.orders.update({
+          where: { id: Number(id) },
+          data: {
+            order_status: OrderStatus.COMPLETED,
+            completed_at: new Date(),
+          },
+        });
 
-      // Tích điểm: chỉ khi đơn hàng có customer
-      if (updatedOrder.customer_id) {
-        const points = Math.floor(Number(updatedOrder.total_amount) / POINTS_PER_VND);
-        if (points > 0) {
-          await tx.customer.update({
-            where: { id: updatedOrder.customer_id },
-            data: { loyalty_point: { increment: points } },
-          });
+        // Tích điểm: chỉ khi đơn hàng có customer
+        if (updatedOrder.customer_id) {
+          const points = Math.floor(
+            Number(updatedOrder.total_amount) / POINTS_PER_VND,
+          );
+          if (points > 0) {
+            await tx.customer.update({
+              where: { id: updatedOrder.customer_id },
+              data: { loyalty_point: { increment: points } },
+            });
+          }
         }
-      }
 
-      return updatedOrder;
-    }, { timeout: 30000, maxWait: 30000 });
+        return updatedOrder;
+      },
+      { timeout: 30000, maxWait: 30000 },
+    );
     return this.transformToDto(order);
   }
 
@@ -262,13 +298,17 @@ export class OrderService {
       ...this.transformToDto(order),
       order_items: order.order_items.map((item) => ({
         ...item,
-        product_name: item.product?.product_name || item.shop_product?.product_name || '',
+        product_name:
+          item.product?.product_name || item.shop_product?.product_name || '',
         unit_price: Number(item.unit_price),
       })),
     }));
   }
 
-  async orderReport(dto: OrderMonthReportDto, user: JwtPayloadDto): Promise<OrderReportDto> {
+  async orderReport(
+    dto: OrderMonthReportDto,
+    user: JwtPayloadDto,
+  ): Promise<OrderReportDto> {
     if (!user.shop_id) {
       throw new BadRequestException('User does not belong to any shop');
     }
@@ -296,7 +336,7 @@ export class OrderService {
       where: {
         ...monthlyWhere,
         order_status: OrderStatus.COMPLETED,
-      }
+      },
     });
 
     const orders = await this.prisma.orders.findMany({
@@ -308,14 +348,20 @@ export class OrderService {
         total_amount: true,
         shift_user: {
           select: { date: true },
-        }
-      }
+        },
+      },
     });
 
-    const dailyMap = new Map<string, { numberOfOrders: number; totalAmount: number }>();
+    const dailyMap = new Map<
+      string,
+      { numberOfOrders: number; totalAmount: number }
+    >();
     orders.forEach((order) => {
       const dateStr = order.shift_user.date.toISOString().split('T')[0];
-      const current = dailyMap.get(dateStr) || { numberOfOrders: 0, totalAmount: 0 };
+      const current = dailyMap.get(dateStr) || {
+        numberOfOrders: 0,
+        totalAmount: 0,
+      };
       dailyMap.set(dateStr, {
         numberOfOrders: current.numberOfOrders + 1,
         totalAmount: current.totalAmount + Number(order.total_amount),
@@ -323,7 +369,11 @@ export class OrderService {
     });
 
     // 3. Chạy vòng lặp For để lấp đầy các ngày trong tháng (Fill gaps)
-    const report: { date: Date; numberOfOrders: number; totalAmount: number }[] = [];
+    const report: {
+      date: Date;
+      numberOfOrders: number;
+      totalAmount: number;
+    }[] = [];
     const endDate = new Date(Date.UTC(dto.year, dto.month, 0));
     const daysInMonth = endDate.getUTCDate();
 
@@ -370,15 +420,29 @@ export class OrderService {
 
     // 3. Call PayOS to create payment link using shop's encrypted credentials
     try {
-      const payosResponse = await this.payosService.createOrderPayment(
-        user.shop_id,
-        data,
-        orderId,
-      );
+      const { orderCode, payosResponse } =
+        await this.payosService.createOrderPayment(user.shop_id, data, orderId);
 
       this.logger.log(
         `PayOS payment created for order ${orderId}, payment ${payment.id}`,
       );
+
+      const payosCode = String(
+        payosResponse.code ?? payosResponse.statusCode ?? '',
+      );
+      if (payosCode !== '00') {
+        const detail =
+          payosResponse.desc ??
+          payosResponse.message ??
+          payosResponse.error ??
+          'Unknown';
+        throw new Error(`PayOS rejected create-payment: ${detail}`);
+      }
+
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { payos_order_code: orderCode },
+      });
 
       return {
         orderId,
@@ -411,13 +475,17 @@ export class OrderService {
 
     const { orderCode, status, signature } = webhookData.data;
 
+    if (!signature) {
+      throw new BadRequestException('Missing webhook signature');
+    }
+
     // Find the payment by reconstructing the orderCode → order_id relationship
     // orderCode format: `${shopId}${orderId}` or fallback timestamp-based
     // We look up by finding a PENDING PAYOS payment whose order matches
-    const pendingPayments = await this.prisma.payment.findMany({
+    const payment = await this.prisma.payment.findMany({
       where: {
         payment_method: 'PAYOS',
-        payment_status: OrderStatus.PENDING,
+        payos_order_code: String(orderCode),
       },
       include: {
         order: {
@@ -429,9 +497,17 @@ export class OrderService {
       orderBy: { created_at: 'desc' },
     });
 
+    if (!payment) {
+      return { message: 'Payment not found' };
+    }
+
     // Match by orderCode: try shopId + orderId combination
-    let matchedPayment: { id: number; order_id: number; shopId: number } | null = null;
-    for (const p of pendingPayments) {
+    let matchedPayment: {
+      id: number;
+      order_id: number;
+      shopId: number;
+    } | null = null;
+    for (const p of payment) {
       const shopId = p.order.shift_user?.shop_id;
       if (!shopId) continue;
 
@@ -443,7 +519,9 @@ export class OrderService {
     }
 
     if (!matchedPayment) {
-      this.logger.warn(`No matching pending payment for orderCode ${orderCode}`);
+      this.logger.warn(
+        `No matching pending payment for orderCode ${orderCode}`,
+      );
       return { message: 'Payment not found' };
     }
 
@@ -457,7 +535,9 @@ export class OrderService {
       );
 
       if (!isValid) {
-        this.logger.warn(`Invalid webhook signature for orderCode ${orderCode}`);
+        this.logger.warn(
+          `Invalid webhook signature for orderCode ${orderCode}`,
+        );
         throw new BadRequestException('Invalid webhook signature');
       }
     }
