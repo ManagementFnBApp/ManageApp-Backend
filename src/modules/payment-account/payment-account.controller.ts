@@ -22,13 +22,30 @@ import { ResponseData, ResponseType } from 'src/global/globalResponse';
 export class PaymentAccountController {
   constructor(private readonly paymentAccountService: PaymentAccountService) {}
 
+  @Roles(Role.SHOPOWNER)
   @Post()
   async create(
     @Body() createPaymentAccountDto: CreatePaymentAccountDto,
+    @GetUser() user: JwtPayloadDto,
   ): Promise<ResponseType<any>> {
     return new ResponseData(
-      await this.paymentAccountService.create(createPaymentAccountDto),
+      await this.paymentAccountService.create(
+        createPaymentAccountDto,
+        user.shop_id!,
+      ),
       HttpStatus.CREATED,
+      HttpMessage.SUCCESS,
+    );
+  }
+
+  @Roles(Role.SHOPOWNER)
+  @Get()
+  async findByShop(
+    @GetUser() user: JwtPayloadDto,
+  ): Promise<ResponseType<any>> {
+    return new ResponseData(
+      await this.paymentAccountService.findByShop(user.shop_id!),
+      HttpStatus.OK,
       HttpMessage.SUCCESS,
     );
   }
@@ -37,10 +54,9 @@ export class PaymentAccountController {
   @Get(':id')
   async findOne(
     @Param('id') id: string,
-    @GetUser() user: JwtPayloadDto,
   ): Promise<ResponseType<any>> {
     return new ResponseData(
-      await this.paymentAccountService.findOne(+id),
+      await this.paymentAccountService.findOne(id),
       HttpStatus.OK,
       HttpMessage.SUCCESS,
     );
@@ -51,9 +67,14 @@ export class PaymentAccountController {
   async update(
     @Param('id') id: string,
     @Body() updatePaymentAccountDto: UpdatePaymentAccountDto,
+    @GetUser() user: JwtPayloadDto,
   ): Promise<ResponseType<any>> {
     return new ResponseData(
-      await this.paymentAccountService.update(+id, updatePaymentAccountDto),
+      await this.paymentAccountService.update(
+        id,
+        updatePaymentAccountDto,
+        user.shop_id!,
+      ),
       HttpStatus.OK,
       HttpMessage.SUCCESS,
     );
@@ -61,9 +82,12 @@ export class PaymentAccountController {
 
   @Roles(Role.SHOPOWNER)
   @Delete(':id')
-  async remove(@Param('id') id: string): Promise<ResponseType<any>> {
+  async remove(
+    @Param('id') id: string,
+    @GetUser() user: JwtPayloadDto,
+  ): Promise<ResponseType<any>> {
     return new ResponseData(
-      await this.paymentAccountService.remove(+id),
+      await this.paymentAccountService.remove(id, user.shop_id!),
       HttpStatus.OK,
       HttpMessage.SUCCESS,
     );

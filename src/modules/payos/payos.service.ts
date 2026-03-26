@@ -382,8 +382,8 @@ export class PayosService {
       ? smartlyGeneratedOrderCode
       : fallbackOrderCode;
 
-    const returnUrl = `${this.redirectUrl}?orderCode=${orderCode}`;
-    const cancelUrl = `${this.redirectUrl}?orderCode=${orderCode}&cancelled=true`;
+    const returnUrl = `${this.returnUrl}?orderCode=${orderCode}`;
+    const cancelUrl = `${this.cancelUrl}?orderCode=${orderCode}&cancelled=true`;
     const description = `DH${orderId}-SHOP${shopId}`;
 
     const paymentData = {
@@ -415,5 +415,45 @@ export class PayosService {
       shopPayment.client_id,
       apiKey,
     );
+  }
+
+  /**
+   * Verify a PayOS webhook signature using the shop's decrypted checksumKey.
+   */
+  async verifyShopWebhookSignature(
+    data: Record<string, any>,
+    signature: string,
+    shopId: number,
+  ): Promise<boolean> {
+    const shopPayment = await this.prisma.paymentAccount.findFirst({
+      where: {
+        shop_id: shopId,
+        gateway_provider: 'PAYOS',
+        is_active: true,
+      },
+    });
+
+    if (!shopPayment) {
+      throw new Error('Shop has not set up payment account');
+    }
+
+    const { checksumKey } = await this.kmsService.decryptCredentials(
+      shopPayment.encrypted_credentials,
+      shopPayment.encryption_iv,
+      shopPayment.encryption_auth_tag,
+      shopPayment.encrypted_dek,
+    );
+
+    const dataString = Object.keys(data)
+      .sort()
+      .map((key) => `${key}=${data[key]}`)
+      .join('&');
+
+    const computedSignature = crypto
+      .createHmac('sha256', checksumKey)
+      .update(dataString)
+      .digest('hex');
+
+    return computedSignature === signature;
   }
 }

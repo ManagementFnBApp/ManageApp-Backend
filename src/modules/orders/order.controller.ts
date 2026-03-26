@@ -7,6 +7,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { GetUser, Public, Roles } from 'src/decorators/decorators';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { JwtPayloadDto } from 'src/dtos/login.dto';
+import type { PayosIPN } from '../payos/payos.service';
 
 @ApiTags('Orders')
 @Controller('orders')
@@ -22,6 +23,39 @@ export class OrderController {
   ): Promise<ResponseType<any>> {
     return new ResponseData(
       await this.orderService.createOrder(createOrderDto, user),
+      HttpStatus.SUCCESS,
+      HttpMessage.SUCCESS,
+    );
+  }
+
+  /**
+   * Create order + PayOS payment in one call.
+   * Returns checkoutUrl and qrCode for the customer.
+   */
+  @Roles(Role.STAFF, Role.SHOPOWNER)
+  @Post('pay')
+  async createOrderWithPayment(
+    @Body() createOrderDto: OrderDto,
+    @GetUser() user: JwtPayloadDto,
+  ): Promise<ResponseType<any>> {
+    return new ResponseData(
+      await this.orderService.createOrderWithPayment(createOrderDto, user),
+      HttpStatus.SUCCESS,
+      HttpMessage.SUCCESS,
+    );
+  }
+
+  /**
+   * Public webhook endpoint for PayOS IPN callbacks.
+   * Updates order + payment status to PAID or CANCELLED.
+   */
+  @Public()
+  @Post('payos/webhook')
+  async handlePayosWebhook(
+    @Body() webhookData: PayosIPN,
+  ): Promise<ResponseType<any>> {
+    return new ResponseData(
+      await this.orderService.handlePayosOrderWebhook(webhookData),
       HttpStatus.SUCCESS,
       HttpMessage.SUCCESS,
     );

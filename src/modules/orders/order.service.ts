@@ -1,16 +1,23 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { OrderDto, OrderMonthReportDto, OrderReportDto, OrderResponseDto, ViewOrderDto } from 'src/dtos/oder.dto';
 import { OrderStatus } from 'src/global/globalEnum';
 import { PrismaService } from 'db/prisma.service';
 import { JwtPayloadDto } from 'src/dtos/login.dto';
 import { InventoryService } from '../inventories/inventory.service';
+import { PayosService, PayosIPN } from '../payos/payos.service';
+
 const POINTS_PER_VND = 10_000;
+
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     private prisma: PrismaService,
     private readonly inventoryService: InventoryService,
+    private readonly payosService: PayosService,
   ) { }
+
 
   async createOrder(data: OrderDto, user: JwtPayloadDto): Promise<any> {
     if (user.shop_id == null || user.shop_id == undefined) {
@@ -333,6 +340,169 @@ export class OrderService {
     }
 
     return { numberOfOrders, reportByDate: report };
+  }
+
+  /**
+   * Create an order AND initiate PayOS payment in one flow.
+   * 1. Create order (PENDING)
+   * 2. Create Payment record (PENDING)
+   * 3. Call PayOS with shop's credentials → return checkoutUrl / qrCode
+   */
+  async createOrderWithPayment(data: OrderDto, user: JwtPayloadDto) {
+    if (!user.shop_id) {
+      throw new BadRequestException('User does not belong to any shop');
+    }
+
+    // 1. Create the order (reuse existing method)
+    const orderResult = await this.createOrder(data, user);
+    const orderId = orderResult.id;
+
+    // 2. Create Payment record with PENDING status
+    const payment = await this.prisma.payment.create({
+      data: {
+        order_id: orderId,
+        amount_paid: data.totalAmount,
+        currency: 'VND',
+        payment_method: 'PAYOS',
+        payment_status: OrderStatus.PENDING,
+      },
+    });
+
+    // 3. Call PayOS to create payment link using shop's encrypted credentials
+    try {
+      const payosResponse = await this.payosService.createOrderPayment(
+        user.shop_id,
+        data,
+        orderId,
+      );
+
+      this.logger.log(
+        `PayOS payment created for order ${orderId}, payment ${payment.id}`,
+      );
+
+      return {
+        orderId,
+        paymentId: payment.id,
+        items: orderResult.items,
+        checkoutUrl: payosResponse.data?.checkoutUrl || null,
+        qrCode: payosResponse.data?.qrCode || null,
+      };
+    } catch (error) {
+      // Rollback: mark payment as cancelled if PayOS call fails
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { payment_status: OrderStatus.CANCELLED },
+      });
+      throw new BadRequestException(
+        `Failed to create PayOS payment: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Handle PayOS webhook for order payments.
+   * Verifies signature, then updates Payment + Order status.
+   */
+  async handlePayosOrderWebhook(webhookData: PayosIPN) {
+    if (!webhookData.data) {
+      this.logger.warn('Webhook received with no data payload');
+      return { message: 'No data' };
+    }
+
+    const { orderCode, status, signature } = webhookData.data;
+
+    // Find the payment by reconstructing the orderCode → order_id relationship
+    // orderCode format: `${shopId}${orderId}` or fallback timestamp-based
+    // We look up by finding a PENDING PAYOS payment whose order matches
+    const pendingPayments = await this.prisma.payment.findMany({
+      where: {
+        payment_method: 'PAYOS',
+        payment_status: OrderStatus.PENDING,
+      },
+      include: {
+        order: {
+          include: {
+            shift_user: true,
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    // Match by orderCode: try shopId + orderId combination
+    let matchedPayment: { id: number; order_id: number; shopId: number } | null = null;
+    for (const p of pendingPayments) {
+      const shopId = p.order.shift_user?.shop_id;
+      if (!shopId) continue;
+
+      const expectedCode = Number(`${shopId}${p.order_id}`);
+      if (expectedCode === orderCode) {
+        matchedPayment = { ...p, shopId };
+        break;
+      }
+    }
+
+    if (!matchedPayment) {
+      this.logger.warn(`No matching pending payment for orderCode ${orderCode}`);
+      return { message: 'Payment not found' };
+    }
+
+    // Verify signature using shop's checksumKey
+    if (signature) {
+      const { signature: _sig, ...dataWithoutSig } = webhookData.data;
+      const isValid = await this.payosService.verifyShopWebhookSignature(
+        dataWithoutSig,
+        signature,
+        matchedPayment.shopId,
+      );
+
+      if (!isValid) {
+        this.logger.warn(`Invalid webhook signature for orderCode ${orderCode}`);
+        throw new BadRequestException('Invalid webhook signature');
+      }
+    }
+
+    // Update based on status
+    if (status === 'PAID') {
+      await this.prisma.$transaction([
+        this.prisma.payment.update({
+          where: { id: matchedPayment.id },
+          data: { payment_status: OrderStatus.PAID },
+        }),
+        this.prisma.orders.update({
+          where: { id: matchedPayment.order_id },
+          data: { order_status: OrderStatus.PAID },
+        }),
+      ]);
+
+      this.logger.log(
+        `Order ${matchedPayment.order_id} payment confirmed (PAID) via webhook`,
+      );
+      return { message: 'Payment confirmed', orderId: matchedPayment.order_id };
+    }
+
+    if (status === 'CANCELLED') {
+      await this.prisma.$transaction([
+        this.prisma.payment.update({
+          where: { id: matchedPayment.id },
+          data: { payment_status: OrderStatus.CANCELLED },
+        }),
+        this.prisma.orders.update({
+          where: { id: matchedPayment.order_id },
+          data: {
+            order_status: OrderStatus.CANCELLED,
+            cancelled_at: new Date(),
+          },
+        }),
+      ]);
+
+      this.logger.log(
+        `Order ${matchedPayment.order_id} payment cancelled via webhook`,
+      );
+      return { message: 'Payment cancelled', orderId: matchedPayment.order_id };
+    }
+
+    return { message: `Unhandled status: ${status}` };
   }
 
   transformToDto(order: any): OrderResponseDto {
