@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsEnum,
   IsInt,
   IsNumber,
   IsOptional,
@@ -8,6 +9,7 @@ import {
 } from 'class-validator';
 import { OrderItemDto } from './order-item.dto';
 import { Type } from 'class-transformer';
+import { PaymentMethod } from 'src/global/globalEnum';
 
 export class OrderDto {
   @IsOptional()
@@ -23,6 +25,10 @@ export class OrderDto {
 
   @IsNumber()
   totalAmount: number;
+
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod = PaymentMethod.PAYOS;
 
   @IsArray()
   @ValidateNested({ each: true })
