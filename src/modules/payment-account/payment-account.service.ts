@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'db/prisma.service';
 import {
+  AccountPaymentResponseDto,
   CreatePaymentAccountDto,
   UpdatePaymentAccountDto,
 } from 'src/dtos/payment-account.dto';
@@ -25,7 +26,7 @@ export class PaymentAccountService {
    * Create a payment account for a shop.
    * Encrypts api_key + checksum_key using KMS envelope encryption.
    */
-  async create(dto: CreatePaymentAccountDto, shopId: number) {
+  async create(dto: CreatePaymentAccountDto, shopId: number): Promise<AccountPaymentResponseDto> {
     // Validate shop exists
     const shop = await this.prisma.shop.findUnique({
       where: { id: shopId },
@@ -87,7 +88,6 @@ export class PaymentAccountService {
       gateway_provider: paymentAccount.gateway_provider,
       client_id: paymentAccount.client_id,
       is_active: paymentAccount.is_active,
-      created_at: paymentAccount.created_at,
     };
   }
 
@@ -95,7 +95,7 @@ export class PaymentAccountService {
    * Find the active payment account for a shop.
    */
   @IsActive()
-  async findByShop(shopId: number) {
+  async findByShop(shopId: number): Promise<AccountPaymentResponseDto> {
     const account = await this.prisma.paymentAccount.findFirst({
       where: {
         shop_id: shopId,
@@ -124,7 +124,7 @@ export class PaymentAccountService {
   /**
    * Update a payment account — re-encrypts credentials if provided.
    */
-  async update(id: string, dto: UpdatePaymentAccountDto, shopId: number) {
+  async update(id: string, dto: UpdatePaymentAccountDto, shopId: number): Promise<AccountPaymentResponseDto> {
     const existing = await this.prisma.paymentAccount.findUnique({
       where: { id },
     });
