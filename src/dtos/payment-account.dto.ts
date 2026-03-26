@@ -28,3 +28,11 @@ export interface CreateOrderPaymentResult {
   orderCode: string;
   payosResponse: PayosPaymentResponse;
 }
+
+export class AccountPaymentResponseDto {
+  id: string;
+  shop_id: number;
+  gateway_provider: string;
+  client_id: string;
+  is_active: boolean;
+}
