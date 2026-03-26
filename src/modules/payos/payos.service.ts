@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from 'db/prisma.service';
 import * as https from 'https';
 import { OrderDto } from 'src/dtos/oder.dto';
+import { CreateOrderPaymentResult } from 'src/dtos/payment-account.dto';
 import { KmsEncryptionService } from 'src/modules/kms/kms-encryption.service';
 
 export interface PayosPaymentResponse {
@@ -336,7 +337,7 @@ export class PayosService {
     shopId: number,
     orderData: OrderDto,
     order_id: number,
-  ): Promise<PayosPaymentResponse> {
+  ): Promise<CreateOrderPaymentResult> {
     const shopPayment = await this.prisma.paymentAccount.findFirst({
       where: {
         shop_id: shopId,
@@ -356,11 +357,7 @@ export class PayosService {
       shopPayment.encrypted_dek,
     );
 
-    const amount = Math.floor(
-      Number(
-        orderData.totalAmount,
-      ),
-    );
+    const amount = Math.floor(Number(orderData.totalAmount));
 
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error('Invalid order amount for PayOS payment');
@@ -382,8 +379,8 @@ export class PayosService {
       ? smartlyGeneratedOrderCode
       : fallbackOrderCode;
 
-    const returnUrl = `${this.redirectUrl}?orderCode=${orderCode}`;
-    const cancelUrl = `${this.redirectUrl}?orderCode=${orderCode}&cancelled=true`;
+    const returnUrl = `${this.returnUrl}?orderCode=${orderCode}`;
+    const cancelUrl = `${this.cancelUrl}?orderCode=${orderCode}&cancelled=true`;
     const description = `DH${orderId}-SHOP${shopId}`;
 
     const paymentData = {
@@ -409,11 +406,56 @@ export class PayosService {
       `Tạo PayOS payment theo shop: shopId=${shopId}, orderCode=${orderCode}, amount=${amount}`,
     );
 
-    return this.postRequestWithCredentials(
+    const payosResponse = await this.postRequestWithCredentials(
       '/payment-requests',
       body,
       shopPayment.client_id,
       apiKey,
     );
+
+    return {
+      orderCode: String(orderCode),
+      payosResponse,
+    };
+  }
+
+  /**
+   * Verify a PayOS webhook signature using the shop's decrypted checksumKey.
+   */
+  async verifyShopWebhookSignature(
+    data: Record<string, any>,
+    signature: string,
+    shopId: number,
+  ): Promise<boolean> {
+    const shopPayment = await this.prisma.paymentAccount.findFirst({
+      where: {
+        shop_id: shopId,
+        gateway_provider: 'PAYOS',
+        is_active: true,
+      },
+    });
+
+    if (!shopPayment) {
+      throw new Error('Shop has not set up payment account');
+    }
+
+    const { checksumKey } = await this.kmsService.decryptCredentials(
+      shopPayment.encrypted_credentials,
+      shopPayment.encryption_iv,
+      shopPayment.encryption_auth_tag,
+      shopPayment.encrypted_dek,
+    );
+
+    const dataString = Object.keys(data)
+      .sort()
+      .map((key) => `${key}=${data[key]}`)
+      .join('&');
+
+    const computedSignature = crypto
+      .createHmac('sha256', checksumKey)
+      .update(dataString)
+      .digest('hex');
+
+    return computedSignature === signature;
   }
 }

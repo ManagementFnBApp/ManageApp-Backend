@@ -15,6 +15,7 @@ import { getJwtExpiresIn } from 'src/config/jwt.config';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from '../email/email.service';
 import { VerifyOTPDto } from 'src/dtos/forgot-password.dto';
+import { ShopService } from '../shops/shop.service';
 
 @Injectable()
 export class AuthService {
@@ -23,6 +24,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly shopService: ShopService,
   ) { }
 
   private readonly temporaryUsers: Map<string, string> = new Map();
@@ -41,9 +43,11 @@ export class AuthService {
     if (!isMatch) {
       throw new UnauthorizedException('Username or password is incorrect');
     }
+    const active: boolean = await this.shopService.isActiveShop(user.shop_id ?? 0);
     // Tạo payload với sub chứa user_id
     const payload: JwtPayloadDto = {
       id: user.user_id,
+      is_active: active,
       username: user.username,
       role: user.role,
       owner_manager_id: user.owner_manager_id,

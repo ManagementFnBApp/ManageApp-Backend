@@ -7,9 +7,10 @@ import {
 } from 'src/dtos/shop-category.dto';
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
 import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
-import { GetUser, Roles } from 'src/decorators/decorators';
+import { GetUser, IsActive, Roles } from 'src/decorators/decorators';
 import { JwtPayloadDto } from 'src/dtos/login.dto';
 
+@IsActive()
 @Controller('shop-categories')
 @UseGuards(AuthGuard)
 export class ShopCategoryController {

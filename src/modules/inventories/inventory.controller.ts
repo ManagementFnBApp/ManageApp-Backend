@@ -18,8 +18,10 @@ import {
 } from '../../dtos/inventory.dto';
 import { Roles } from 'src/decorators/decorators';
 import { Role } from 'src/global/globalEnum';
+  import { IsActive } from 'src/decorators/decorators';
 
 @Controller('inventories')
+@IsActive()
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) { }
 

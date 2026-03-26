@@ -3,6 +3,7 @@ import { IsNotEmpty } from 'class-validator';
 
 export class JwtPayloadDto {
   id: number; // user ID
+  is_active: boolean;
   username?: string;
   role: string | null; // or permissions: string[]
   owner_manager_id?: number | null; // Để check SHOPOWNER gốc
