@@ -17,9 +17,15 @@ export enum Role {
   STAFF = 'STAFF',
 }
 
+
 export enum OrderStatus {
   PENDING = 'PENDING',
   PAID = 'PAID',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
+}
+
+export enum PaymentMethod {
+  PAYOS = 'PAYOS',
+  CASH = 'CASH',
 }

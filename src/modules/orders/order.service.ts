@@ -6,7 +6,7 @@ import {
   OrderResponseDto,
   ViewOrderDto,
 } from 'src/dtos/oder.dto';
-import { OrderStatus } from 'src/global/globalEnum';
+import { OrderStatus, PaymentMethod } from 'src/global/globalEnum';
 import { PrismaService } from 'db/prisma.service';
 import { JwtPayloadDto } from 'src/dtos/login.dto';
 import { InventoryService } from '../inventories/inventory.service';
@@ -403,17 +403,51 @@ export class OrderService {
       throw new BadRequestException('User does not belong to any shop');
     }
 
+    // Determine payment method, default to PAYOS
+    const paymentMethod = data.paymentMethod || PaymentMethod.CASH;
+
     // 1. Create the order (reuse existing method)
     const orderResult = await this.createOrder(data, user);
     const orderId = orderResult.id;
 
+    // Handle CASH payment
+    if (paymentMethod === PaymentMethod.CASH) {
+      // 2. Create Payment record with PAID status immediately for CASH
+      const payment = await this.prisma.payment.create({
+        data: {
+          order_id: orderId,
+          amount_paid: data.totalAmount,
+          currency: 'VND',
+          payment_method: PaymentMethod.CASH,
+          payment_status: OrderStatus.PAID,
+        },
+      });
+
+      // 3. Update Order status to PAID
+      await this.prisma.orders.update({
+        where: { id: orderId },
+        data: {
+          order_status: OrderStatus.PAID,
+        },
+      });
+
+      return {
+        orderId,
+        paymentId: payment.id,
+        items: orderResult.items,
+        paymentMethod: PaymentMethod.CASH,
+        message: 'Order created and paid with CASH successfully',
+      };
+    }
+
+    // Handle PAYOS payment (Default)
     // 2. Create Payment record with PENDING status
     const payment = await this.prisma.payment.create({
       data: {
         order_id: orderId,
         amount_paid: data.totalAmount,
         currency: 'VND',
-        payment_method: 'PAYOS',
+        payment_method: PaymentMethod.PAYOS,
         payment_status: OrderStatus.PENDING,
       },
     });
