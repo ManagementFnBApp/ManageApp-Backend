@@ -2,10 +2,11 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { MerchandiseRedemptionService } from './merchandise-redemption.service';
 import { CreateRedemptionDto } from 'src/dtos/merchandise-redemption.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
-import { GetUser } from 'src/decorators/decorators';
+import { GetUser, IsActive, Roles } from 'src/decorators/decorators';
 import { ResponseData } from 'src/global/globalResponse';
-import { HttpMessage, HttpStatus } from 'src/global/globalEnum';
+import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
 
+@IsActive()
 @Controller('merchandise-redemptions')
 @UseGuards(AuthGuard)
 export class MerchandiseRedemptionController {
@@ -15,6 +16,7 @@ export class MerchandiseRedemptionController {
    * POST /merchandise-redemptions
    * Khách đổi quà bằng điểm tích lũy.
    */
+  @Roles(Role.STAFF, Role.SHOPOWNER)
   @Post()
   async redeemMerchandise(
     @Body() dto: CreateRedemptionDto,
@@ -36,6 +38,7 @@ export class MerchandiseRedemptionController {
    * GET /merchandise-redemptions
    * Lịch sử đổi quà của cả shop.
    */
+  @Roles(Role.STAFF, Role.SHOPOWNER)
   @Get()
   async getShopRedemptionHistory(@GetUser('shop_id') shop_id: number) {
     try {
@@ -51,6 +54,7 @@ export class MerchandiseRedemptionController {
    * GET /merchandise-redemptions/customer/:id
    * Lịch sử đổi quà của 1 khách hàng.
    */
+  @Roles(Role.STAFF, Role.SHOPOWNER)
   @Get('customer/:id')
   async getCustomerRedemptionHistory(
     @Param('id') id: number,
