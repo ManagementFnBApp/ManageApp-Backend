@@ -81,7 +81,7 @@ export class OrderController {
     );
   }
 
-  @Public()
+  @Roles(Role.STAFF, Role.SHOPOWNER)
   @Put(':id/complete')
   async completeOrder(
     @Param('id') id: number,
@@ -93,6 +93,7 @@ export class OrderController {
     );
   }
 
+  @Roles(Role.STAFF, Role.SHOPOWNER)
   @Put(':id/cancel')
   async cancelOrder(
     @Param('id') id: number,

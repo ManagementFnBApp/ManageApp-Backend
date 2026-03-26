@@ -14,15 +14,17 @@ import {
   UpdateMerchandiseDto,
 } from 'src/dtos/merchandise.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
-import { GetUser } from 'src/decorators/decorators';
+import { GetUser, IsActive, Roles } from 'src/decorators/decorators';
 import { ResponseData } from 'src/global/globalResponse';
-import { HttpMessage, HttpStatus } from 'src/global/globalEnum';
+import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
 
+@IsActive()
 @Controller('merchandises')
 @UseGuards(AuthGuard)
 export class MerchandiseController {
   constructor(private merchandiseService: MerchandiseService) { }
 
+  @Roles(Role.STAFF, Role.SHOPOWNER)
   @Post()
   async createMerchandise(
     @Body() dto: CreateMerchandiseDto,
@@ -43,6 +45,7 @@ export class MerchandiseController {
     }
   }
 
+  @Roles(Role.STAFF, Role.SHOPOWNER)
   @Get()
   async getAllMerchandises(@GetUser('shop_id') shop_id: number) {
     try {
@@ -53,6 +56,7 @@ export class MerchandiseController {
     }
   }
 
+  @Roles(Role.STAFF, Role.SHOPOWNER)
   @Get(':id')
   async getMerchandiseById(
     @Param('id') id: number,
@@ -69,6 +73,7 @@ export class MerchandiseController {
     }
   }
 
+  @Roles(Role.STAFF, Role.SHOPOWNER)
   @Put(':id')
   async updateMerchandise(
     @Param('id') id: number,
@@ -87,6 +92,7 @@ export class MerchandiseController {
     }
   }
 
+  @Roles(Role.STAFF, Role.SHOPOWNER)
   @Delete(':id')
   async deleteMerchandise(
     @Param('id') id: number,
