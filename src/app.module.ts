@@ -28,6 +28,7 @@ import { ShiftModule } from './modules/shifts/shift.module';
 import { ShopProductModule } from './modules/shop-product/shop-product.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { PaymentAccountModule } from './modules/payment-account/payment-account.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { join } from 'path';
     ShopCategoryModule,
     ShiftModule,
     ShopProductModule,
+    PaymentAccountModule,
   ],
   controllers: [AppController],
   providers: [

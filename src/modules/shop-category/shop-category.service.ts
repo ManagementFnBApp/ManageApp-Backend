@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'db/prisma.service';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 import {
   CreateShopCategoryDto,
   ShopCategoryWithCategoryDto,
@@ -32,5 +33,18 @@ export class ShopCategoryService {
       },
     });
     return shopCategories;
+  }
+
+  async delete(user: JwtPayloadDto, categoryId: number): Promise<boolean> {
+    if(user.shop_id === null) {
+      throw new UnauthorizedException('User does not belong to any shop');
+    }
+    const result = await this.prisma.shopCategory.deleteMany({
+      where: {
+        shop_id: user.shop_id,
+        category_id: categoryId,
+      },
+    });
+    return result.count > 0;
   }
 }

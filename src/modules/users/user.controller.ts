@@ -94,6 +94,8 @@ export class UserController {
       HttpMessage.SUCCESS,
     );
   }
+
+  @Roles(Role.SHOPOWNER)
   @Post('managed')
   @ApiOperation({
     summary:
