@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { ShopCategoryService } from './shop-category.service';
 import {
@@ -8,6 +8,7 @@ import {
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
 import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
 import { GetUser, Roles } from 'src/decorators/decorators';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
 
 @Controller('shop-categories')
 @UseGuards(AuthGuard)
@@ -34,6 +35,19 @@ export class ShopCategoryController {
   ): Promise<ResponseType<ShopCategoryWithCategoryDto[]>> {
     return new ResponseData<ShopCategoryWithCategoryDto[]>(
       await this.shopCategoryService.getCategoriesByShopId(shopId),
+      HttpStatus.SUCCESS,
+      HttpMessage.SUCCESS,
+    );
+  }
+
+  @Delete(':id')
+  @Roles(Role.SHOPOWNER)
+  async deleteCategory(
+    @GetUser() user: JwtPayloadDto,
+    @Param('id') categoryId: number,
+  ): Promise<ResponseType<boolean>> {
+    return new ResponseData(
+      await this.shopCategoryService.delete(user, categoryId),
       HttpStatus.SUCCESS,
       HttpMessage.SUCCESS,
     );
