@@ -5,7 +5,7 @@ import {
   OrderReportDto,
   OrderResponseDto,
   ViewOrderDto,
-} from 'src/dtos/oder.dto';
+} from 'src/dtos/order.dto';
 import { OrderStatus, PaymentMethod } from 'src/global/globalEnum';
 import { PrismaService } from 'db/prisma.service';
 import { JwtPayloadDto } from 'src/dtos/login.dto';
@@ -22,7 +22,7 @@ export class OrderService {
     private prisma: PrismaService,
     private readonly inventoryService: InventoryService,
     private readonly payosService: PayosService,
-  ) { }
+  ) {}
 
   async createOrder(data: OrderDto, user: JwtPayloadDto): Promise<any> {
     if (user.shop_id == null || user.shop_id == undefined) {

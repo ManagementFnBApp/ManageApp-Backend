@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from 'db/prisma.service';
 import * as https from 'https';
-import { OrderDto } from 'src/dtos/oder.dto';
+import { OrderDto } from 'src/dtos/order.dto';
 import { CreateOrderPaymentResult } from 'src/dtos/payment-account.dto';
 import { KmsEncryptionService } from 'src/modules/kms/kms-encryption.service';
 

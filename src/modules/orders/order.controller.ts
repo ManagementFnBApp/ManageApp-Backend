@@ -1,6 +1,12 @@
 import { Body, Controller, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { OrderDto, OrderMonthReportDto, OrderReportDto, OrderResponseDto, ViewOrderDto } from 'src/dtos/oder.dto';
+import {
+  OrderDto,
+  OrderMonthReportDto,
+  OrderReportDto,
+  OrderResponseDto,
+  ViewOrderDto,
+} from 'src/dtos/order.dto';
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
 import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
 import { ApiTags } from '@nestjs/swagger';
@@ -14,7 +20,7 @@ import type { PayosIPN } from '../payos/payos.service';
 @UseGuards(AuthGuard)
 @IsActive()
 export class OrderController {
-  constructor(private readonly orderService: OrderService) { }
+  constructor(private readonly orderService: OrderService) {}
 
   @Roles(Role.STAFF, Role.SHOPOWNER)
   @Post()
@@ -113,7 +119,10 @@ export class OrderController {
 
   @Roles(Role.SHOPOWNER)
   @Post('report')
-  async orderReport(@Body() dto: OrderMonthReportDto, @GetUser() user: JwtPayloadDto): Promise<ResponseType<OrderReportDto>> {
+  async orderReport(
+    @Body() dto: OrderMonthReportDto,
+    @GetUser() user: JwtPayloadDto,
+  ): Promise<ResponseType<OrderReportDto>> {
     return new ResponseData(
       await this.orderService.orderReport(dto, user),
       HttpStatus.SUCCESS,
