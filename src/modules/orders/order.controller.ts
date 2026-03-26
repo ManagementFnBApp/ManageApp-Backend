@@ -4,7 +4,7 @@ import { OrderDto, OrderMonthReportDto, OrderReportDto, OrderResponseDto, ViewOr
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
 import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
 import { ApiTags } from '@nestjs/swagger';
-import { GetUser, Public, Roles } from 'src/decorators/decorators';
+import { GetUser, IsActive, Public, Roles } from 'src/decorators/decorators';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { JwtPayloadDto } from 'src/dtos/login.dto';
 import type { PayosIPN } from '../payos/payos.service';
@@ -12,6 +12,7 @@ import type { PayosIPN } from '../payos/payos.service';
 @ApiTags('Orders')
 @Controller('orders')
 @UseGuards(AuthGuard)
+@IsActive()
 export class OrderController {
   constructor(private readonly orderService: OrderService) { }
 

@@ -8,7 +8,9 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { JwtPayloadDto } from 'src/dtos/login.dto';
+import { IsActive } from 'src/decorators/decorators';
 
+@IsActive() 
 @Controller('shop-products')
 export class ShopProductController {
   constructor(private readonly shopProductService: ShopProductService) { }

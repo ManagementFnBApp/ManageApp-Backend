@@ -22,7 +22,7 @@ export class OrderService {
     private prisma: PrismaService,
     private readonly inventoryService: InventoryService,
     private readonly payosService: PayosService,
-  ) {}
+  ) { }
 
   async createOrder(data: OrderDto, user: JwtPayloadDto): Promise<any> {
     if (user.shop_id == null || user.shop_id == undefined) {
@@ -528,21 +528,18 @@ export class OrderService {
     // Verify signature using shop's checksumKey
     if (signature) {
       const { signature: _sig, ...dataWithoutSig } = webhookData.data;
-    if (!signature || signature.trim() === '') {
-      this.logger.warn(`Missing webhook signature for orderCode ${orderCode}`);
-      throw new BadRequestException('Missing webhook signature');
-    }
+      const isValid = await this.payosService.verifyShopWebhookSignature(
+        dataWithoutSig,
+        signature,
+        matchedPayment.shopId,
+      );
 
-    const { signature: _sig, ...dataWithoutSig } = webhookData.data;
-    const isValid = await this.payosService.verifyShopWebhookSignature(
-      dataWithoutSig,
-      signature,
-      matchedPayment.shopId,
-    );
-
-    if (!isValid) {
-      this.logger.warn(`Invalid webhook signature for orderCode ${orderCode}`);
-      throw new BadRequestException('Invalid webhook signature');
+      if (!isValid) {
+        this.logger.warn(
+          `Invalid webhook signature for orderCode ${orderCode}`,
+        );
+        throw new BadRequestException('Invalid webhook signature');
+      }
     }
 
     // Update based on status

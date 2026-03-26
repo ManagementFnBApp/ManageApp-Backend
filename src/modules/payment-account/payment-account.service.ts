@@ -10,6 +10,7 @@ import {
   UpdatePaymentAccountDto,
 } from 'src/dtos/payment-account.dto';
 import { KmsEncryptionService } from '../kms/kms-encryption.service';
+import { IsActive } from 'src/decorators/decorators';
 
 @Injectable()
 export class PaymentAccountService {
@@ -93,6 +94,7 @@ export class PaymentAccountService {
   /**
    * Find the active payment account for a shop.
    */
+  @IsActive()
   async findByShop(shopId: number) {
     const account = await this.prisma.paymentAccount.findFirst({
       where: {
