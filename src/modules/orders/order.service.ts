@@ -497,7 +497,7 @@ export class OrderService {
       orderBy: { created_at: 'desc' },
     });
 
-    if (!payment) {
+    if (payment.length === 0) {
       return { message: 'Payment not found' };
     }
 
