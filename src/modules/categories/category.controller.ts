@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { Roles, GetUser } from 'src/decorators/decorators';
+import { Roles, GetUser, IsActive } from 'src/decorators/decorators';
 import { Role, HttpMessage, HttpStatus } from 'src/global/globalEnum';
 import { CategoryService } from './category.service';
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
@@ -18,6 +18,7 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) { }
 
   @Get()
+  @IsActive()
   @Roles(Role.ADMIN, Role.SHOPOWNER)
   async getAllCategories(): Promise<ResponseType<ResponseCategoryDto[]>> {
     const categories = await this.categoryService.getAll();
