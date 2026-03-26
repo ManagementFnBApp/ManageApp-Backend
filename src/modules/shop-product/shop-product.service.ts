@@ -14,9 +14,17 @@ export class ShopProductService {
   ) { }
 
   async create(createShopProductDto: CreateShopProductDto, shop_id: number, imagePath: string): Promise<ShopProductResponseDto> {
-    const [shop, category] = await Promise.all([
+    const [shop, category, shopCategory] = await Promise.all([
       this.prisma.shop.findUnique({ where: { id: shop_id } }),
       this.prisma.category.findUnique({ where: { id: createShopProductDto.categoryId } }),
+      this.prisma.shopCategory.findUnique({
+        where: {
+          shop_id_category_id: {
+            shop_id: shop_id,
+            category_id: createShopProductDto.categoryId
+          }
+        }
+      })
     ]);
 
     if (!shop) {
@@ -25,6 +33,9 @@ export class ShopProductService {
     if (!category) {
       throw new NotFoundException(`Category with id ${createShopProductDto.categoryId} not found`)
     };
+    if (!shopCategory) {
+      throw new ForbiddenException(`Category with id ${category.category_name} is not associated with shop ${shop.shop_name}`);
+    }
 
     const existingShopProduct = await this.prisma.shopProduct.findFirst({
       where: {
@@ -123,7 +134,20 @@ export class ShopProductService {
       if (!category) {
         throw new NotFoundException('Category not found');
       }
-    };
+
+      const shopCategory = await this.prisma.shopCategory.findUnique({
+        where: {
+          shop_id_category_id: {
+            shop_id: existingProduct.shop_id,
+            category_id: updateShopProductDto.categoryId
+          }
+        }
+      });
+
+      if (!shopCategory) {
+        throw new ForbiddenException(`Category with id ${updateShopProductDto.categoryId} is not associated with shop ${existingProduct.shop_id}`);
+      }
+    }
 
     const updated = await this.prisma.shopProduct.update({
       where: { id },

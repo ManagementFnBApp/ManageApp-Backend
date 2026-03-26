@@ -46,13 +46,16 @@ export class SubscriptionCronService {
     }
   }
 
-  // Chạy mỗi giờ để xóa các shop chưa thanh toán sau 1 giờ
-  @Cron(CronExpression.EVERY_HOUR, {
+  // Chạy mỗi phút để xóa shop unpaid theo trạng thái payment
+  // failed > 30 giây, pending > 2 phút
+  @Cron(CronExpression.EVERY_MINUTE, {
     name: 'delete-unpaid-shops',
     timeZone: 'Asia/Ho_Chi_Minh',
   })
   async handleDeleteUnpaidShops() {
-    this.logger.log('🗑️  Bắt đầu xóa các shop chưa thanh toán sau 1 giờ...');
+    this.logger.log(
+      '🗑️  Bắt đầu xóa các shop unpaid (failed > 30 giây, pending > 2 phút)...',
+    );
 
     try {
       const result = await this.shopSubscriptionService.deleteUnpaidShops();

@@ -1,0 +1,85 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  HttpStatus,
+} from '@nestjs/common';
+import { PaymentAccountService } from './payment-account.service';
+import {
+  AccountPaymentResponseDto,
+  CreatePaymentAccountDto,
+  UpdatePaymentAccountDto,
+} from 'src/dtos/payment-account.dto';
+import { GetUser, IsActive, Roles } from 'src/decorators/decorators';
+import { HttpMessage, Role } from 'src/global/globalEnum';
+import { JwtPayloadDto } from 'src/dtos/login.dto';
+import { ResponseData, ResponseType } from 'src/global/globalResponse';
+
+@IsActive()
+@Controller('payment-account')
+export class PaymentAccountController {
+  constructor(private readonly paymentAccountService: PaymentAccountService) {}
+
+  @Roles(Role.SHOPOWNER)
+  @Post()
+  async create(
+    @Body() createPaymentAccountDto: CreatePaymentAccountDto,
+    @GetUser() user: JwtPayloadDto,
+  ): Promise<ResponseType<AccountPaymentResponseDto>> {
+    return new ResponseData(
+      await this.paymentAccountService.create(
+        createPaymentAccountDto,
+        user.shop_id!,
+      ),
+      HttpStatus.CREATED,
+      HttpMessage.SUCCESS,
+    );
+  }
+
+  @Roles(Role.SHOPOWNER)
+  @Get()
+  async findByShop(
+    @GetUser() user: JwtPayloadDto,
+  ): Promise<ResponseType<AccountPaymentResponseDto>> {
+    return new ResponseData(
+      await this.paymentAccountService.findByShop(user.shop_id!),
+      HttpStatus.OK,
+      HttpMessage.SUCCESS,
+    );
+  }
+
+  @Roles(Role.SHOPOWNER)
+  @Patch(':id')
+  async update(
+    @Param('id') id: string,
+    @Body() updatePaymentAccountDto: UpdatePaymentAccountDto,
+    @GetUser() user: JwtPayloadDto,
+  ): Promise<ResponseType<AccountPaymentResponseDto>> {
+    return new ResponseData(
+      await this.paymentAccountService.update(
+        id,
+        updatePaymentAccountDto,
+        user.shop_id!,
+      ),
+      HttpStatus.OK,
+      HttpMessage.SUCCESS,
+    );
+  }
+
+  @Roles(Role.SHOPOWNER)
+  @Delete(':id')
+  async remove(
+    @Param('id') id: string,
+    @GetUser() user: JwtPayloadDto,
+  ): Promise<ResponseType<any>> {
+    return new ResponseData(
+      await this.paymentAccountService.remove(id, user.shop_id!),
+      HttpStatus.OK,
+      HttpMessage.SUCCESS,
+    );
+  }
+}

@@ -18,9 +18,11 @@ import { AuthGuard } from '../auth/guard/auth.guard';
 import { GetUser, Roles } from 'src/decorators/decorators';
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
 import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
+import { IsActive } from 'src/decorators/decorators';
 
 @Controller('customers')
 @UseGuards(AuthGuard)
+@IsActive() 
 export class CustomerController {
   constructor(private customerService: CustomerService) { }
 

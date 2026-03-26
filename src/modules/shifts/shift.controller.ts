@@ -15,11 +15,12 @@ import {
   UpdateShiftUserDto,
 } from 'src/dtos/shift.dto';
 import { AuthGuard } from '../auth/guard/auth.guard';
-import { GetUser, Public } from 'src/decorators/decorators';
+import { GetUser, IsActive, Public } from 'src/decorators/decorators';
 import { Roles } from 'src/decorators/decorators';
 import { ResponseData } from 'src/global/globalResponse';
 import { HttpMessage, HttpStatus, Role } from 'src/global/globalEnum';
 
+@IsActive()
 @Controller('shifts')
 @UseGuards(AuthGuard)
 export class ShiftController {

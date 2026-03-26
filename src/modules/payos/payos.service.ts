@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { PrismaService } from 'db/prisma.service';
 import * as https from 'https';
+import { OrderDto } from 'src/dtos/order.dto';
+import { CreateOrderPaymentResult } from 'src/dtos/payment-account.dto';
+import { KmsEncryptionService } from 'src/modules/kms/kms-encryption.service';
 
 export interface PayosPaymentResponse {
   code?: string;
@@ -12,6 +16,7 @@ export interface PayosPaymentResponse {
   data?: {
     checkoutUrl: string;
     qrCode: string;
+    status?: string;
   };
 }
 
@@ -49,9 +54,14 @@ export class PayosService {
   private readonly apiKey: string;
   private readonly checksumKey: string;
   private readonly endpoint: string;
-  private readonly redirectUrl: string;
+  private readonly returnUrl: string;
+  private readonly cancelUrl: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private readonly kmsService: KmsEncryptionService,
+    private readonly prisma: PrismaService,
+  ) {
     this.clientId = this.configService.get<string>(
       'PAYOS_CLIENT_ID',
       'cliyekwj400hh01iagx6o0dyz',
@@ -68,9 +78,13 @@ export class PayosService {
       'PAYOS_ENDPOINT',
       'https://api-merchant.payos.vn/v2',
     );
-    this.redirectUrl = this.configService.get<string>(
-      'PAYOS_REDIRECT_URL',
-      'http://localhost:5173/payment/success',
+    this.returnUrl = this.configService.get<string>(
+      'PAYOS_RETURN_URL',
+      'http://localhost:2999/subscriptions/payments/payos/callback',
+    );
+    this.cancelUrl = this.configService.get<string>(
+      'PAYOS_CANCEL_URL',
+      'http://localhost:2999/subscriptions/payments/payos/callback',
     );
   }
 
@@ -85,8 +99,8 @@ export class PayosService {
     buyerPhone?: string,
     buyerEmail?: string,
   ): Promise<PayosPaymentResponse> {
-    const returnUrl = `${this.redirectUrl}?orderCode=${orderCode}`;
-    const cancelUrl = `${this.redirectUrl}?orderCode=${orderCode}&cancelled=true`;
+    const returnUrl = `${this.returnUrl}`;
+    const cancelUrl = `${this.cancelUrl || this.returnUrl}`;
 
     const paymentData = {
       orderCode,
@@ -175,13 +189,16 @@ export class PayosService {
   /**
    * Tạo chữ ký cho dữ liệu
    */
-  private generateCreatePaymentSignature(data: {
-    orderCode: number;
-    amount: number;
-    description: string;
-    returnUrl: string;
-    cancelUrl: string;
-  }): string {
+  private generateCreatePaymentSignature(
+    data: {
+      orderCode: number;
+      amount: number;
+      description: string;
+      returnUrl: string;
+      cancelUrl: string;
+    },
+    checksumKey: string = this.checksumKey,
+  ): string {
     // PayOS expects this exact canonical string for create payment request.
     const signData = [
       `amount=${data.amount}`,
@@ -192,7 +209,7 @@ export class PayosService {
     ].join('&');
 
     return crypto
-      .createHmac('sha256', this.checksumKey)
+      .createHmac('sha256', checksumKey)
       .update(signData)
       .digest('hex');
   }
@@ -207,6 +224,61 @@ export class PayosService {
       .createHmac('sha256', this.checksumKey)
       .update(dataString)
       .digest('hex');
+  }
+
+  private postRequestWithCredentials(
+    path: string,
+    body: string,
+    clientId: string,
+    apiKey: string,
+  ): Promise<PayosPaymentResponse> {
+    return new Promise((resolve, reject) => {
+      const urlObj = new URL(`${this.endpoint}${path}`);
+
+      const options: https.RequestOptions = {
+        hostname: urlObj.hostname,
+        port: 443,
+        path: urlObj.pathname,
+        method: 'POST',
+        headers: {
+          'x-client-id': clientId,
+          'x-api-key': apiKey,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+        },
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data) as PayosPaymentResponse;
+            const statusCode = res.statusCode ?? 500;
+
+            if (statusCode >= 400) {
+              const detail =
+                parsed.desc ??
+                parsed.message ??
+                parsed.error ??
+                `HTTP ${statusCode}`;
+              reject(new Error(`PayOS API lỗi (${statusCode}): ${detail}`));
+              return;
+            }
+
+            resolve(parsed);
+          } catch {
+            reject(new Error(`PayOS trả về không hợp lệ: ${data}`));
+          }
+        });
+      });
+
+      req.on('error', (e) => reject(e));
+      req.write(body);
+      req.end();
+    });
   }
 
   private postRequest(
@@ -260,5 +332,132 @@ export class PayosService {
       req.write(body);
       req.end();
     });
+  }
+
+  async createOrderPayment(
+    shopId: number,
+    orderData: OrderDto,
+    order_id: number,
+  ): Promise<CreateOrderPaymentResult> {
+    const shopPayment = await this.prisma.paymentAccount.findFirst({
+      where: {
+        shop_id: shopId,
+        gateway_provider: 'PAYOS',
+        is_active: true,
+      },
+    });
+
+    if (!shopPayment) {
+      throw new Error('Shop has not set up payment account');
+    }
+
+    const { apiKey, checksumKey } = await this.kmsService.decryptCredentials(
+      shopPayment.encrypted_credentials,
+      shopPayment.encryption_iv,
+      shopPayment.encryption_auth_tag,
+      shopPayment.encrypted_dek,
+    );
+
+    const amount = Math.floor(Number(orderData.totalAmount));
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error('Invalid order amount for PayOS payment');
+    }
+
+    const orderId = Number(order_id);
+    if (!Number.isFinite(orderId)) {
+      throw new Error('Invalid order id for PayOS payment');
+    }
+
+    // Try deterministic shop-order code first; fallback to timestamp strategy if unsafe.
+    const smartOrderCodeRaw = `${shopId}${orderId}`;
+    const smartlyGeneratedOrderCode = Number(smartOrderCodeRaw);
+    const fallbackOrderCode = parseInt(
+      `${Date.now()}${orderId}`.slice(-10),
+      10,
+    );
+    const orderCode = Number.isSafeInteger(smartlyGeneratedOrderCode)
+      ? smartlyGeneratedOrderCode
+      : fallbackOrderCode;
+
+    const returnUrl = `${this.returnUrl}?orderCode=${orderCode}`;
+
+    const cancelUrl = `${this.cancelUrl || this.returnUrl}?orderCode=${orderCode}&cancelled=true`;
+    const description = `DH${orderId}-SHOP${shopId}`;
+
+    const paymentData = {
+      orderCode,
+      amount,
+      description,
+      buyerName: orderData.customerId,
+      returnUrl,
+      cancelUrl,
+    };
+
+    const signature = this.generateCreatePaymentSignature(
+      paymentData,
+      checksumKey,
+    );
+
+    const body = JSON.stringify({
+      ...paymentData,
+      signature,
+    });
+
+    this.logger.log(
+      `Tạo PayOS payment theo shop: shopId=${shopId}, orderCode=${orderCode}, amount=${amount}`,
+    );
+
+    const payosResponse = await this.postRequestWithCredentials(
+      '/payment-requests',
+      body,
+      shopPayment.client_id,
+      apiKey,
+    );
+
+    return {
+      orderCode: String(orderCode),
+      payosResponse,
+    };
+  }
+
+  /**
+   * Verify a PayOS webhook signature using the shop's decrypted checksumKey.
+   */
+  async verifyShopWebhookSignature(
+    data: Record<string, any>,
+    signature: string,
+    shopId: number,
+  ): Promise<boolean> {
+    const shopPayment = await this.prisma.paymentAccount.findFirst({
+      where: {
+        shop_id: shopId,
+        gateway_provider: 'PAYOS',
+        is_active: true,
+      },
+    });
+
+    if (!shopPayment) {
+      throw new Error('Shop has not set up payment account');
+    }
+
+    const { checksumKey } = await this.kmsService.decryptCredentials(
+      shopPayment.encrypted_credentials,
+      shopPayment.encryption_iv,
+      shopPayment.encryption_auth_tag,
+      shopPayment.encrypted_dek,
+    );
+
+    const dataString = Object.keys(data)
+      .sort()
+      .map((key) => `${key}=${data[key]}`)
+      .join('&');
+
+    const computedSignature = crypto
+      .createHmac('sha256', checksumKey)
+      .update(dataString)
+      .digest('hex');
+
+    return computedSignature === signature;
   }
 }

@@ -12,6 +12,9 @@ export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 export const ROLES_KEY = 'roles';
 export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
 
+export const IS_ACTIVE_KEY = 'isActive';
+export const IsActive = () => SetMetadata(IS_ACTIVE_KEY, true);
+
 export const GetUser = createParamDecorator(
   (data: string | undefined, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
