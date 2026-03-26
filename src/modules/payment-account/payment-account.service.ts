@@ -120,30 +120,6 @@ export class PaymentAccountService {
   }
 
   /**
-   * Find a payment account by ID.
-   */
-  async findOne(id: string) {
-    const account = await this.prisma.paymentAccount.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        shop_id: true,
-        gateway_provider: true,
-        client_id: true,
-        is_active: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
-
-    if (!account) {
-      throw new NotFoundException(`Payment account ${id} not found`);
-    }
-
-    return account;
-  }
-
-  /**
    * Update a payment account — re-encrypts credentials if provided.
    */
   async update(id: string, dto: UpdatePaymentAccountDto, shopId: number) {

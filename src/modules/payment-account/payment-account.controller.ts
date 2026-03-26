@@ -13,7 +13,7 @@ import {
   CreatePaymentAccountDto,
   UpdatePaymentAccountDto,
 } from 'src/dtos/payment-account.dto';
-import { GetUser, Roles } from 'src/decorators/decorators';
+import { GetUser, IsActive, Roles } from 'src/decorators/decorators';
 import { HttpMessage, Role } from 'src/global/globalEnum';
 import { JwtPayloadDto } from 'src/dtos/login.dto';
 import { ResponseData, ResponseType } from 'src/global/globalResponse';
@@ -45,18 +45,6 @@ export class PaymentAccountController {
   ): Promise<ResponseType<any>> {
     return new ResponseData(
       await this.paymentAccountService.findByShop(user.shop_id!),
-      HttpStatus.OK,
-      HttpMessage.SUCCESS,
-    );
-  }
-
-  @Roles(Role.SHOPOWNER)
-  @Get(':id')
-  async findOne(
-    @Param('id') id: string,
-  ): Promise<ResponseType<any>> {
-    return new ResponseData(
-      await this.paymentAccountService.findOne(id),
       HttpStatus.OK,
       HttpMessage.SUCCESS,
     );
