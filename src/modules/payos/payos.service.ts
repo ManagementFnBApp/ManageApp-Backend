@@ -16,6 +16,7 @@ export interface PayosPaymentResponse {
   data?: {
     checkoutUrl: string;
     qrCode: string;
+    status?: string;
   };
 }
 
@@ -380,7 +381,8 @@ export class PayosService {
       : fallbackOrderCode;
 
     const returnUrl = `${this.returnUrl}?orderCode=${orderCode}`;
-    const cancelUrl = `${this.cancelUrl}?orderCode=${orderCode}&cancelled=true`;
+
+    const cancelUrl = `${this.cancelUrl || this.returnUrl}?orderCode=${orderCode}&cancelled=true`;
     const description = `DH${orderId}-SHOP${shopId}`;
 
     const paymentData = {

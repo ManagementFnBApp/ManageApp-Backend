@@ -213,65 +213,85 @@ export class ShopSubscriptionService {
   }
 
   async deleteUnpaidShops(): Promise<{ deleted: number; message: string }> {
-    // Tìm các shop subscription được tạo hơn 1 giờ trước và chưa có payment success
-    const oneHourAgo = new Date();
-    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+    const now = new Date();
+    const failedCutoff = new Date(now.getTime() - 30 * 1000);
+    const pendingCutoff = new Date(now.getTime() - 2 * 60 * 1000);
 
-    // Tìm các shop subscription có shop is_active = false và được tạo hơn 1 giờ trước
-    const unpaidShopSubscriptions = await this.prisma.shopSubscription.findMany(
-      {
-        where: {
-          created_at: {
-            lte: oneHourAgo, // created_at <= 1 hour ago
-          },
-          shop: {
-            is_active: false, // Shop chưa được kích hoạt
-          },
-        },
-        include: {
-          subscription_payments: true,
-          shop: true,
+    const unpaidShopSubscriptions = await this.prisma.shopSubscription.findMany({
+      where: {
+        shop: {
+          is_active: false,
         },
       },
-    );
+      include: {
+        subscription_payments: {
+          orderBy: {
+            created_at: 'desc',
+          },
+        },
+      },
+    });
 
-    // Filter ra các shop không có payment success
-    const shopsToDelete = unpaidShopSubscriptions.filter(
-      (shopSub) =>
-        !shopSub.subscription_payments.some(
-          (payment) => payment.payment_status === 'success',
-        ),
-    );
+    const shopsToDelete = unpaidShopSubscriptions.filter((shopSub) => {
+      const hasSuccessPayment = shopSub.subscription_payments.some(
+        (payment) => payment.payment_status === 'success',
+      );
+
+      if (hasSuccessPayment) {
+        return false;
+      }
+
+      const latestPayment = shopSub.subscription_payments[0];
+      if (!latestPayment) {
+        return false;
+      }
+
+      if (latestPayment.payment_status === 'failed') {
+        return latestPayment.created_at <= failedCutoff;
+      }
+
+      if (latestPayment.payment_status === 'pending') {
+        return latestPayment.created_at <= pendingCutoff;
+      }
+
+      return false;
+    });
 
     let deletedCount = 0;
 
-    // Xóa từng shop và shop subscription
     for (const shopSub of shopsToDelete) {
       try {
-        // 1. Xóa các payment liên quan (nếu có)
-        await this.prisma.subscriptionPayment.deleteMany({
-          where: { sub_shop_id: shopSub.id },
-        });
+        await this.prisma.$transaction(async (tx) => {
+          await tx.user.updateMany({
+            where: { shop_id: shopSub.shop_id },
+            data: { shop_id: null },
+          });
 
-        // 2. Xóa shop subscription
-        await this.prisma.shopSubscription.delete({
-          where: { id: shopSub.id },
-        });
+          await tx.subscriptionPayment.deleteMany({
+            where: { sub_shop_id: shopSub.id },
+          });
 
-        // 3. Xóa shop
-        await this.prisma.shop.delete({
-          where: { id: shopSub.shop_id },
+          await tx.shopSubscription.delete({
+            where: { id: shopSub.id },
+          });
+
+          await tx.shop.delete({
+            where: { id: shopSub.shop_id },
+          });
         });
 
         deletedCount++;
       } catch (error) {
-        // Log lỗi nhưng tiếp tục xóa các shop khác
+        this.logger.error(
+          `Không thể xóa shop unpaid (shopSubId=${shopSub.id}, shopId=${shopSub.shop_id})`,
+          error instanceof Error ? error.stack : undefined,
+        );
       }
     }
 
     return {
       deleted: deletedCount,
-      message: `Đã xóa ${deletedCount} shop chưa thanh toán sau 1 giờ`,
+      message: `Đã xóa ${deletedCount} shop unpaid (failed > 30 giây, pending > 2 phút)`,
     };
   }
 
@@ -1086,12 +1106,28 @@ export class ShopSubscriptionService {
   async handlePayosCallback(query: Record<string, string>): Promise<{
     updated: boolean;
     message: string;
+    paymentStatus: 'pending' | 'failed' | 'success' | null;
   }> {
+    const toCallbackStatus = (
+      value: string,
+    ): 'pending' | 'failed' | 'success' | null => {
+      if (value === 'pending' || value === 'failed' || value === 'success') {
+        return value;
+      }
+      return null;
+    };
+
     const code = String(query.code ?? '');
+    const status = String(query.status ?? '').toUpperCase();
+    const cancelled = String(query.cancelled ?? '').toLowerCase() === 'true';
     const orderCode = Number(query.orderCode);
 
     if (!Number.isFinite(orderCode)) {
-      return { updated: false, message: 'Thiếu orderCode trong callback' };
+      return {
+        updated: false,
+        message: 'Thiếu orderCode trong callback',
+        paymentStatus: null,
+      };
     }
 
 
@@ -1101,19 +1137,82 @@ export class ShopSubscriptionService {
     });
 
     if (!payment || payment.method !== 'PAYOS') {
-      return { updated: false, message: 'Không tìm thấy payment PAYOS' };
+      return {
+        updated: false,
+        message: 'Không tìm thấy payment PAYOS',
+        paymentStatus: null,
+      };
     }
 
     if (payment.payment_status === 'success') {
-      return { updated: false, message: 'Payment đã success trước đó' };
+      return {
+        updated: false,
+        message: 'Payment đã success trước đó',
+        paymentStatus: 'success',
+      };
+    }
+
+    if (cancelled) {
+      if (payment.payment_status === 'pending') {
+        await this.prisma.subscriptionPayment.update({
+          where: { id: payment.id },
+          data: { payment_status: 'failed' },
+        });
+        return {
+          updated: true,
+          message: 'Đã cập nhật payment failed do user hủy trên PayOS',
+          paymentStatus: 'failed',
+        };
+      }
+      return {
+        updated: false,
+        message: `Payment hiện tại: ${payment.payment_status}`,
+        paymentStatus: toCallbackStatus(payment.payment_status),
+      };
     }
 
     if (code === '00') {
-      if (payment.payment_status === 'pending') {
-        await this.updateSubscriptionPaymentStatus(payment.id);
-        return { updated: true, message: 'Đã cập nhật payment success từ callback' };
+      const isPaidFromQuery = status === 'PAID';
+      let isPaid = isPaidFromQuery;
+
+      if (!isPaid) {
+        try {
+          const paymentInfo = await this.payosService.getPaymentInfo(orderCode);
+          const payosStatus = String(paymentInfo.data?.status ?? '').toUpperCase();
+          isPaid = payosStatus === 'PAID';
+        } catch (error) {
+          this.logger.warn(
+            `Không thể xác minh trạng thái PayOS từ callback orderCode=${orderCode}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       }
-      return { updated: false, message: `Payment hiện tại: ${payment.payment_status}` };
+
+      if (isPaid && payment.payment_status === 'pending') {
+        await this.updateSubscriptionPaymentStatus(payment.id);
+        return {
+          updated: true,
+          message: 'Đã cập nhật payment success từ callback',
+          paymentStatus: 'success',
+        };
+      }
+
+      if (payment.payment_status === 'pending') {
+        await this.prisma.subscriptionPayment.update({
+          where: { id: payment.id },
+          data: { payment_status: 'failed' },
+        });
+        return {
+          updated: true,
+          message: 'Đã cập nhật payment failed do callback không xác nhận PAID',
+          paymentStatus: 'failed',
+        };
+      }
+
+      return {
+        updated: false,
+        message: `Payment hiện tại: ${payment.payment_status}`,
+        paymentStatus: toCallbackStatus(payment.payment_status),
+      };
     }
 
     if (payment.payment_status === 'pending') {
@@ -1121,10 +1220,18 @@ export class ShopSubscriptionService {
         where: { id: payment.id },
         data: { payment_status: 'failed' },
       });
-      return { updated: true, message: 'Đã cập nhật payment failed từ callback' };
+      return {
+        updated: true,
+        message: 'Đã cập nhật payment failed từ callback',
+        paymentStatus: 'failed',
+      };
     }
 
-    return { updated: false, message: `Payment hiện tại: ${payment.payment_status}` };
+    return {
+      updated: false,
+      message: `Payment hiện tại: ${payment.payment_status}`,
+      paymentStatus: toCallbackStatus(payment.payment_status),
+    };
   }
 
   private transformPaymentToDto(

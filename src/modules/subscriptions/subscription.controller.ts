@@ -345,10 +345,11 @@ export   class SubscriptionController {
     const { orderCode, code, desc } = query;
 
     // Fallback update: if webhook chưa bắn hoặc bị miss, callback vẫn cập nhật DB.
-    await this.shopSubscriptionService.handlePayosCallback(query);
+    const callbackResult =
+      await this.shopSubscriptionService.handlePayosCallback(query);
 
-    // code = 00 là thành công
-    if (code === '00') {
+    // Chỉ redirect success khi payment đã được xác nhận thành công thực sự.
+    if (callbackResult.paymentStatus === 'success' && code === '00') {
       res.redirect(
         `${frontendUrl}/payment/success?orderCode=${orderCode ?? ''}`,
       );
